@@ -727,7 +727,7 @@ Loanवर जिंदगी, भाड्याची कार भाई
 `
 },
     {
-    title: "zindagi Zindagi",
+    title: "Singham (Remix)",
     artist: "",
     lrc: `
     [00:00.55](निजहु भयकारक सिंघम)
