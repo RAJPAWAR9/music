@@ -7,8 +7,10 @@
 <!-- BOOSTEROS V6 FULL BUG AUDIT + ALL FIXES: audio race guards, crossfade user controls, bounded error recovery, lifecycle position persistence -->
 <link rel="manifest" href="data:application/manifest+json,{"name":"Booster OS","short_name":"Booster","display":"standalone","start_url":".","background_color":"%230a0a0f","theme_color":"%230a0a0f"}">
 <meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes">
-<title>Booster OS — Smart Audio • Smart Radio</title><!-- v8: reverb song-change transition, Spotify-style taste engine, video mode -->
-<meta name="description" content="Booster OS — cinematic music streaming with smart unique-song autoplay recommendations.">
+<meta name="author" content="Raj Pawar">
+<!-- Design by Raj Pawar -->
+<title>Booster OS — Smart Audio • Smart Radio | Design by Raj Pawar</title><!-- v8: reverb song-change transition, Spotify-style taste engine, video mode -->
+<meta name="description" content="Booster OS — cinematic music streaming with smart unique-song autoplay recommendations. Design by Raj Pawar.">
 <style>
 /* ============================================================
    BOOSTER OS — CORE STYLE SYSTEM
@@ -420,7 +422,7 @@ input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;bac
 .pill-badge{font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:99px;background:var(--glass-1-bg);color:var(--text-3);white-space:nowrap;}
 .modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:100;opacity:0;pointer-events:none;transition:opacity .3s;}
 .modal-backdrop.open{opacity:1;pointer-events:all;}
-.modal-box{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%) scale(.92);z-index:101;width:min(380px,88vw);border-radius:var(--r-xl);padding:24px;opacity:0;pointer-events:none;transition:all .32s var(--ease-spring);}
+.modal-box{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%) scale(.92);z-index:101;width:min(380px,88vw);border-radius:var(--r-xl);padding:24px;opacity:0;pointer-events:none;transition:opacity .32s var(--ease-spring),transform .32s var(--ease-spring);}
 .modal-box.open{opacity:1;transform:translate(-50%,-50%) scale(1);pointer-events:all;}
 .modal-title{font-size:16px;font-weight:800;margin-bottom:8px;}
 .modal-desc{font-size:13px;color:var(--text-2);line-height:1.5;margin-bottom:20px;}
@@ -656,6 +658,18 @@ html.bos-low-power .orb,html.bos-low-power .glow,html.bos-low-power canvas{displ
 @keyframes bosV9FxIn{from{opacity:0;transform:translateY(8px) scale(.98)}to{opacity:1;transform:none}}
 @media(max-width:700px){.bos-v9-fx-panel{right:10px;bottom:92px;width:calc(100vw - 20px);border-radius:19px}}
 </style>
+<style id="bos-credit-style">
+.bos-credit{font-size:10.5px;font-weight:600;letter-spacing:.06em;color:var(--text-3);white-space:nowrap;user-select:none;}
+.bos-credit b{font-weight:800;background:linear-gradient(90deg,var(--accent),#ff7ad9);-webkit-background-clip:text;background-clip:text;color:transparent;}
+.bos-credit-side{padding:10px 14px 2px;text-align:center;}
+#app.collapsed .bos-credit-side{display:none;}
+.bos-credit-top{display:block;font-size:9.5px;line-height:1;margin-top:2px;}
+#full-player .bos-credit-fp{grid-column:1/-1;width:100%;}
+.bos-credit-fp{text-align:center;padding:10px 0 calc(8px + var(--safe-b));color:rgba(255,255,255,.55);}
+.bos-credit-q{text-align:center;padding:10px 0 calc(10px + var(--safe-b));flex:none;border-top:1px solid var(--sep);}
+.bos-credit-ob{text-align:center;padding:6px 0 calc(8px + var(--safe-b));color:rgba(255,255,255,.6);position:relative;z-index:2;}
+.bos-credit-ly{text-align:center;padding:8px 0 calc(10px + var(--safe-b));flex:none;color:inherit;opacity:.6;}
+</style>
 </head>
 <body data-theme="dark">
 
@@ -672,7 +686,7 @@ html.bos-low-power .orb,html.bos-low-power .glow,html.bos-low-power canvas{displ
       <div class="brand-mark">
         <svg viewBox="0 0 24 24" fill="none"><path d="M9 18V5l11-2v13" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="6" cy="18" r="3" stroke="currentColor" stroke-width="2"/><circle cx="18" cy="16" r="3" stroke="currentColor" stroke-width="2"/></svg>
       </div>
-      <div class="brand-text">Booster OS<small>Music, elevated</small></div>
+      <div class="brand-text">Booster OS<small>Music, elevated</small><small class="bos-credit" style="text-transform:none;letter-spacing:.04em;margin-top:2px;">Design by <b>Raj Pawar</b></small></div>
     </div>
     <div data-nav="home" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg><span class="nlabel">Home</span></div>
     <div data-nav="search" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg><span class="nlabel">Search</span></div>
@@ -688,6 +702,7 @@ html.bos-low-power .orb,html.bos-low-power .glow,html.bos-low-power canvas{displ
     <div data-nav="queue" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h13M3 12h13M3 18h9"/><path d="M18 15l3 3-3 3"/></svg><span class="nlabel">Queue</span></div>
     <div class="nav-spacer"></div>
     <div data-nav="settings" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9c.29-.6.24-1.31-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06c.51.51 1.22.62 1.82.33.5-.24.9-.68 1-1.24V3a2 2 0 1 1 4 0v.09c.1.56.5 1 1 1.24.6.29 1.31.18 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06c-.51.51-.62 1.22-.33 1.82.24.5.68.9 1.24 1H21a2 2 0 1 1 0 4h-.09c-.56.1-1 .5-1.24 1z"/></svg><span class="nlabel">Settings</span></div>
+    <div class="bos-credit bos-credit-side">Design by <b>Raj Pawar</b></div>
     <button class="collapse-btn" id="collapse-toggle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg><span class="nlabel">Collapse</span></button>
   </nav>
 
@@ -695,7 +710,7 @@ html.bos-low-power .orb,html.bos-low-power .glow,html.bos-low-power canvas{displ
     <div id="topbar">
       <div class="topbar-title mobile-only">
         <div class="brand-mark" style="width:30px;height:30px;border-radius:9px;"><svg viewBox="0 0 24 24" fill="none" style="width:15px;height:15px;"><path d="M9 18V5l11-2v13" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="6" cy="18" r="3" stroke="#fff" stroke-width="2"/><circle cx="18" cy="16" r="3" stroke="#fff" stroke-width="2"/></svg></div>
-        <span style="font-weight:800;font-size:15px;color:var(--text-1);">Booster OS</span>
+        <span style="font-weight:800;font-size:15px;color:var(--text-1);line-height:1.1;">Booster OS<span class="bos-credit bos-credit-top">Design by <b>Raj Pawar</b></span></span>
       </div>
       <div class="topbar-title desktop-only" id="page-title">Home</div>
       <div class="flex-c" style="gap:8px;">
@@ -774,6 +789,7 @@ html.bos-low-power .orb,html.bos-low-power .glow,html.bos-low-power canvas{displ
         </div>
         <button class="ctrl-btn" id="fp-queue-btn2" aria-label="Queue"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h13M3 12h13M3 18h9"/><path d="M18 15l3 3-3 3"/></svg></button>
       </div>
+      <div class="bos-credit bos-credit-fp">Design by <b>Raj Pawar</b></div>
     </div>
   </div>
 
@@ -784,6 +800,7 @@ html.bos-low-power .orb,html.bos-low-power .glow,html.bos-low-power canvas{displ
       <div style="width:38px;"></div>
     </div>
     <div class="lyrics-scroll" id="lyrics-scroll"></div>
+    <div class="bos-credit bos-credit-ly">Design by <b>Raj Pawar</b></div>
   </div>
 </div>
 
@@ -797,6 +814,7 @@ html.bos-low-power .orb,html.bos-low-power .glow,html.bos-low-power canvas{displ
     </div>
   </div>
   <div class="queue-list" id="queue-list"></div>
+  <div class="bos-credit bos-credit-q">Design by <b>Raj Pawar</b></div>
 </div>
 
 <nav id="bottom-nav" class="glass-3">
@@ -2172,7 +2190,8 @@ function updateActiveLyric(currentTime, force){
 
   if(el){
     const start = Number(times[idx]||0);
-    const end = Number(times[idx+1] != null ? times[idx+1] : Math.min((primaryAudio().duration||start+4), start+4));
+    let end = Number(times[idx+1] != null ? times[idx+1] : Math.min((primaryAudio().duration||start+4), start+4));
+    if(bosGapSungEnd){ const ge=bosGapSungEnd(idx); if(ge!=null && ge>start+.25 && ge<end) end=ge; }
     const span = Math.max(.25, end-start);
     const fillTime = est ? Math.max(start, currentTime-0.10) : currentTime;
     const raw = clamp((fillTime-start)/span, 0, 1);
@@ -2223,6 +2242,7 @@ async function loadLyricsFor(track){
   State.lyricsData = {status:"loading"}; renderLyricsPane();
   const apply = data=>{
     if(data.estimated){ data = {synced:false,estimated:false,wordSynced:false,source:(data.source||"").replace("-ESTIMATED",""),lines:lyPlainLines(data.lines.map(l=>l.text).join("\n"))}; }
+    data = bosRomanizeLyrics(data);
     if(data.synced) lyricsPrepareWords(data.lines);
     currentLyrics = data; resetEstimatedLyricsClock();
     State.lyricsData = {status:"ok", synced:data.synced?data.lines:null, plain:data.synced?"":data.lines.map(l=>l.text).join("\n"), estimated:false, source:data.source||""};
@@ -2634,7 +2654,7 @@ function renderSettings(){
       rowButton("Clear all application data","clear-all-data","danger")
     ])
   + group("About", [
-      rowStatic("Application","Booster OS"), rowStatic("Version","2.0 MAX"),
+      rowStatic("Application","Booster OS"), rowStatic("Version","2.0 MAX"), rowStatic("Design by","Raj Pawar"),
       rowStatic("Music data","Booster music service"),
       rowStatic("Lyrics data","LRCLIB · Karalyr · Textyl · Lyrics.ovh (multi-source)")
     ]);
@@ -2851,10 +2871,13 @@ $("#volume-slider").addEventListener("input", e=> Player.setVolume(parseFloat(e.
 (function(){
   let scrollSave=0;
   const vs=$("#view-scroll");
-  if(vs)vs.addEventListener("scroll",()=>{
-    if(scrollSave)return;
-    scrollSave=requestAnimationFrame(()=>{scrollSave=0;const hs=history.state;if(hs&&hs.boosterOS)history.replaceState(Object.assign({},hs,{scrollTop:vs.scrollTop}),"",location.href);});
-  },{passive:true});
+  const flushScroll=()=>{scrollSave=0;const hs=history.state;if(hs&&hs.boosterOS){try{history.replaceState(Object.assign({},hs,{scrollTop:vs.scrollTop}),"",location.href);}catch(e){}}};
+  if(vs){
+    /* V24: was one history.replaceState() per frame while scrolling (very slow, throws in Safari). Now debounced. */
+    vs.addEventListener("scroll",()=>{ if(scrollSave)clearTimeout(scrollSave); scrollSave=setTimeout(flushScroll,120); },{passive:true});
+    document.addEventListener("click",()=>{ if(scrollSave){clearTimeout(scrollSave);flushScroll();} },true);
+    window.addEventListener("pagehide",()=>{ if(scrollSave){clearTimeout(scrollSave);flushScroll();} });
+  }
 })();
 
 (function(){
@@ -2960,8 +2983,7 @@ $("#volume-slider").addEventListener("input", e=> Player.setVolume(parseFloat(e.
       if(!active || !e.touches?.length) return;
       const t=e.touches[0], dx=t.clientX-sx, dy=t.clientY-sy;
       if(Math.abs(dx)>10 || Math.abs(dy)>10) moved=true;
-      if(handlers.axis==='horizontal' && Math.abs(dx)>Math.abs(dy) && Math.abs(dx)>12) e.preventDefault?.();
-    },{passive:false});
+    },{passive:true});
     el.addEventListener('touchend',e=>{
       if(!active) return; active=false;
       const t=e.changedTouches?.[0]; if(!t) return;
@@ -4835,6 +4857,265 @@ renderArtistDetail=async function(id){
 
 init();
 
+
+/* ===== BoosterOS: instrumental gap dots (inside app scope) ===== */
+var bosGapSungEnd=null;
+/* BoosterOS: instrumental gap dots. Additive wrapper — lyric lines/animation are not modified. */
+(function(){
+  var H_ROW=46, MIN_GAP=5.0, EXIT=0.45;
+  var gapCache=new WeakMap();
+  var rows=[], cur=-1, lastT=NaN, lastLyrics=null, lastP=[-1,-1,-1], boxRef=null;
+
+  function computeGaps(L){
+    if(gapCache.has(L)) return gapCache.get(L);
+    var out=[], ls=L.lines||[], n=ls.length;
+    for(var i=-1;i<n-1;i++){
+      var start,end,before;
+      if(i<0){ start=0.4; end=Number(ls[0].time)||0; before=0; }
+      else{
+        var ln=ls[i], t0=Number(ln.time)||0, nx=Number(ls[i+1].time)||0, dur;
+        if(ln.real && ln._wt && ln._wt.length) dur=(ln._wt[ln._wt.length-1]-t0)+0.9;
+        else dur=1.2+String(ln.text||'').length*0.1;
+        dur=Math.min(dur,nx-t0);
+        start=t0+dur; end=nx; before=i+1;
+      }
+      if(end-start>=MIN_GAP) out.push({start:start,end:end,before:before,row:null});
+    }
+    gapCache.set(L,out); return out;
+  }
+  function validLyrics(){
+    return typeof currentLyrics!=='undefined' && currentLyrics && currentLyrics.synced && currentLyrics.lines && currentLyrics.lines.length
+      && State && State.settings && State.settings.syncedLyrics && State.settings.highlightActiveLine;
+  }
+  function insertRows(){
+    cur=-1; rows=[]; lastT=NaN; lastP=[-1,-1,-1];
+    var box=document.getElementById('lyrics-scroll'); boxRef=box; if(!box) return;
+    box.classList.remove('bos-in-gap');
+    var old=box.querySelectorAll('.bos-gap'); for(var k=0;k<old.length;k++) old[k].remove();
+    if(!validLyrics()){ lastLyrics=null; return; }
+    var L=currentLyrics; lastLyrics=L;
+    var gaps=computeGaps(L); if(!gaps.length) return;
+    var lines=box.querySelectorAll('.lyric-line');
+    gaps.forEach(function(g){
+      var anchor=lines[g.before]; if(!anchor) return;
+      var r=document.createElement('div'); r.className='bos-gap'; r.setAttribute('aria-hidden','true');
+      r.innerHTML='<div class="bos-gap-in"><div class="bos-gap-dots"><i></i><i></i><i></i></div></div>';
+      anchor.parentNode.insertBefore(r,anchor);
+      g.row=r; g.dots=r.querySelectorAll('i');
+    });
+    rows=gaps.filter(function(g){return g.row;});
+  }
+  function autoScrollOK(){
+    try{ return State.settings.lyricsAutoScroll && Date.now()>(typeof lyricsUserScrollUntil!=='undefined'?lyricsUserScrollUntil:0); }catch(e){ return false; }
+  }
+  function expand(g){
+    var box=boxRef, r=g.row; if(!r||!box) return;
+    r.classList.remove('out'); r.classList.add('on');
+    box.classList.add('bos-in-gap');
+    if(autoScrollOK()){
+      var sH=box.clientHeight;
+      box.scrollTo({top:Math.max(0,r.offsetTop+H_ROW/2-sH*0.45),behavior:'smooth'});
+    }
+  }
+  function collapse(g){
+    var box=boxRef, r=g.row; if(!r||!box) return;
+    var h=r.offsetHeight, above=false, el=null;
+    try{
+      var idx=(typeof activeLyricIndex!=='undefined')?activeLyricIndex:-1;
+      el=idx>=0?box.querySelectorAll('.lyric-line')[idx]:null;
+      above=!!(el && r.offsetTop<el.offsetTop);
+    }catch(e){}
+    r.classList.add('out'); r.classList.remove('on');
+    box.classList.remove('bos-in-gap');
+    setTimeout(function(){ if(!r.classList.contains('on')) r.classList.remove('out'); },700);
+    /* the row shrinks, so re-aim the scroll at the (now higher) active line */
+    if(above && el && autoScrollOK()){
+      var sH=box.clientHeight, max=Math.max(0,box.scrollHeight-h-sH);
+      box.scrollTo({top:Math.max(0,Math.min(el.offsetTop-h+el.offsetHeight/2-sH*0.45,max)),behavior:'smooth'});
+    }
+  }
+  function setDots(g,p){
+    var v=[0,0,0];
+    for(var k=0;k<3;k++){ var f=Math.max(0,Math.min(1,p*3-k)); v[k]=Math.round((0.26+0.64*f)*100)/100; }
+    for(var j=0;j<3;j++){ if(v[j]!==lastP[j]){ lastP[j]=v[j]; g.dots[j].style.setProperty('--a',v[j]); } }
+  }
+  function tick(){
+    if(!validLyrics()){ if(cur>=0||rows.length){ insertRows(); } return; }
+    if(currentLyrics!==lastLyrics || !boxRef || !boxRef.isConnected || (rows.length && !rows[0].row.isConnected)) insertRows();
+    if(!rows.length) return;
+    var t=LY.rawT; if(typeof t!=='number' || !isFinite(t)) return;
+    var a=null; try{ a=primaryAudio(); }catch(e){}
+    var paused=!!(a&&a.paused);
+    for(var q=0;q<rows.length;q++) rows[q].row.classList.toggle('paused',paused);
+    if(t===lastT) return; lastT=t;
+    var hit=-1;
+    for(var i=0;i<rows.length;i++){ if(t>=rows[i].start && t<rows[i].end){ hit=i; break; } }
+    if(hit!==cur){
+      if(cur>=0) collapse(rows[cur]);
+      cur=hit; lastP=[-1,-1,-1];
+      if(cur>=0) expand(rows[cur]);
+    }
+    if(cur>=0){
+      var g=rows[cur];
+      setDots(g,(t-g.start)/(g.end-g.start));
+      g.row.classList.toggle('out',t>=g.end-EXIT);
+    }
+  }
+
+  bosGapSungEnd=function(i){
+    try{
+      if(!validLyrics()) return null;
+      var gs=computeGaps(currentLyrics);
+      for(var k=0;k<gs.length;k++){ if(gs[k].before===i+1) return gs[k].start; }
+    }catch(e){}
+    return null;
+  };
+  var prevUpdate=updateActiveLyric;
+  updateActiveLyric=function(){
+    var r=prevUpdate.apply(this,arguments);
+    try{ tick(); }catch(e){}
+    return r;
+  };
+  var prevRender=renderLyricsPane;
+  renderLyricsPane=function(){
+    var r=prevRender.apply(this,arguments);
+    try{ insertRows(); }catch(e){}
+    return r;
+  };
+})();
+
+
+/* ===== BoosterOS: Roman lyrics (Indic script -> Roman letters). English / Roman text is left untouched. ===== */
+var BOS_ROMAN_LYRICS=true;
+var bosRomanTables=(function(){
+  var C={0x15:'k',0x16:'kh',0x17:'g',0x18:'gh',0x19:'ng',0x1A:'ch',0x1B:'chh',0x1C:'j',0x1D:'jh',0x1E:'ny',
+    0x1F:'t',0x20:'th',0x21:'d',0x22:'dh',0x23:'n',0x24:'t',0x25:'th',0x26:'d',0x27:'dh',0x28:'n',0x29:'n',
+    0x2A:'p',0x2B:'ph',0x2C:'b',0x2D:'bh',0x2E:'m',0x2F:'y',0x30:'r',0x31:'r',0x32:'l',0x33:'l',0x34:'zh',
+    0x35:'v',0x36:'sh',0x37:'sh',0x38:'s',0x39:'h'};
+  var NUKTA={0x15:'q',0x16:'kh',0x17:'gh',0x1C:'z',0x21:'d',0x22:'rh',0x2B:'f',0x2F:'y'};
+  var IV={0x05:'a',0x06:'aa',0x07:'i',0x08:'ee',0x09:'u',0x0A:'oo',0x0B:'ri',0x0C:'li',0x0D:'e',0x0E:'e',0x0F:'e',0x10:'ai',0x11:'o',0x12:'o',0x13:'o',0x14:'au'};
+  var MV={0x3E:'aa',0x3F:'i',0x40:'i',0x41:'u',0x42:'oo',0x43:'ri',0x44:'ri',0x45:'e',0x46:'e',0x47:'e',0x48:'ai',0x49:'o',0x4A:'o',0x4B:'o',0x4C:'au'};
+  return {C:C,NUKTA:NUKTA,IV:IV,MV:MV};
+})();
+var bosRomanBases=[0x0900,0x0980,0x0A00,0x0A80,0x0B00,0x0B80,0x0C00,0x0C80,0x0D00];
+var bosRomanChillu={0x0D7A:'n',0x0D7B:'n',0x0D7C:'r',0x0D7D:'l',0x0D7E:'l',0x0D7F:'k'};
+function bosRomanWord(word,mr){
+  var T=bosRomanTables, i, cp, dev=[];
+  /* 1) map every Brahmic block onto Devanagari code points (offsets match across blocks) */
+  for(i=0;i<word.length;i++){
+    cp=word.charCodeAt(i);
+    if(bosRomanChillu[cp]){ dev.push({lit:bosRomanChillu[cp]}); continue; }
+    if(cp===0x0A71){ dev.push({addak:1}); continue; }
+    if(cp===0x0A70){ dev.push(0x0902); continue; }
+    if(cp===0x200C||cp===0x200D){ continue; }
+    var base=cp&~0x7F, mapped=cp;
+    if(bosRomanBases.indexOf(base)>=0) mapped=(cp-base)+0x0900;
+    dev.push(mapped);
+  }
+  /* 2) build syllable units: consonant cluster + vowel */
+  var units=[], cur=null, pendDouble=false, nas=null;
+  function push(u){ units.push(u); return u; }
+  for(i=0;i<dev.length;i++){
+    var d=dev[i];
+    if(typeof d==='object'){
+      if(d.lit){ push({c:d.lit,v:'',inh:false}); cur=null; }
+      else if(d.addak){ pendDouble=true; }
+      continue;
+    }
+    var o=d-0x0900;
+    if(T.C[o]!==undefined){
+      var r=T.C[o];
+      if(dev[i+1]===0x093C && T.NUKTA[o]!==undefined){ r=T.NUKTA[o]; i++; }
+      else if(dev[i+1]===0x093C) i++;
+      /* kshа / gya conjuncts */
+      if(o===0x1C && dev[i+1]===0x094D && dev[i+2]===0x091E){ r='gy'; i+=2; }
+      if(pendDouble){ r=r.charAt(0)+r; pendDouble=false; }
+      if(cur && cur.open){ cur.c+=r; cur.inh=true; }
+      else{ cur=push({c:r,v:null,inh:true,open:false}); }
+      if(dev[i+1]===0x094D){ cur.open=true; cur.inh=false; i++; }
+      else{ cur.open=false; }
+      continue;
+    }
+    if(T.MV[o]!==undefined){
+      if(cur){ cur.v=T.MV[o]; cur.inh=false; cur.open=false; }
+      else push({c:'',v:T.MV[o],inh:false});
+      continue;
+    }
+    if(T.IV[o]!==undefined){ cur=push({c:'',v:T.IV[o],inh:false,open:false}); cur=null; continue; }
+    if(o===0x02||o===0x01){ if(units.length) units[units.length-1].nas=(o===0x02?'n':'n'); continue; }
+    if(o===0x03){ if(units.length) units[units.length-1].vis='h'; continue; }
+    if(o===0x4D){ if(cur) {cur.open=true;cur.inh=false;} continue; }
+    if(o===0x50){ push({c:'om',v:'',inh:false}); continue; }
+    if(o>=0x66&&o<=0x6F){ push({c:String(o-0x66),v:'',inh:false,digit:true}); continue; }
+    /* danda, avagraha, others: dropped */
+  }
+  /* 3) schwa deletion (right to left) */
+  var n=units.length, has=[], k;
+  for(k=0;k<n;k++) has[k]=!!(units[k].v||units[k].inh);
+  if(n>1){
+    for(k=n-1;k>=0;k--){
+      var u=units[k]; if(!u.inh||!u.c) continue;
+      if(k===n-1){ has[k]=false; u.del=true; continue; }
+      if(u.nas) continue;                       /* nasalised syllable keeps its 'a' (jhaalaya) */
+      if(k>0 && has[k-1] && has[k+1] && !units[k-1].digit && u.c.length<=3){
+        if(mr && !(units[k+1].inh && !units[k+1].v)) continue;  /* Marathi: keep schwa unless next is a short 'a' too */
+        has[k]=false; u.del=true;
+      }
+    }
+  }
+  /* 4) emit */
+  var out='', STOP=/^(k|kh|g|gh|ng|ch|chh|j|jh|ny|t|th|d|dh|n|p|ph|b|bh|m|q)/;
+  for(k=0;k<n;k++){
+    var q=units[k];
+    out+=q.c;
+    if(q.v) out+=q.v; else if(q.inh && !q.del) out+='a';
+    if(q.nas){
+      var nx=units[k+1];
+      if(nx && STOP.test(nx.c)) out+=(/^(p|ph|b|bh|m)/.test(nx.c)?'m':'n');
+    }
+    if(q.vis) out+='h';
+  }
+  return out;
+}
+function bosRomanText(str,cap,mr){
+  if(!str) return str;
+  var re=/[\u0900-\u0D7F\u200c\u200d]+/g;
+  if(!re.test(str)) return str;
+  re.lastIndex=0;
+  var out=String(str).replace(re,function(m){ return bosRomanWord(m,mr); });
+  out=out.replace(/\s+/g,' ').trim();
+  if(cap && out) out=out.charAt(0).toUpperCase()+out.slice(1);
+  return out;
+}
+function bosRomanizeLyrics(data){
+  try{
+    if(!BOS_ROMAN_LYRICS || !data || !data.lines) return data;
+    var any=false, re=/[\u0900-\u0D7F]/;
+    for(var i=0;i<data.lines.length;i++){ if(re.test(data.lines[i].text||'')){ any=true; break; } }
+    if(!any) return data;
+    var mr=false;
+    try{ mr=/marathi/i.test(String((State.currentTrack&&State.currentTrack.language)||'')); }catch(e){}
+    if(!mr){ for(var j=0;j<data.lines.length;j++){ if(/\u0933/.test(data.lines[j].text||'')){ mr=true; break; } } }
+    var copy=Object.assign({},data);
+    copy.lines=data.lines.map(function(l){
+      if(!re.test(l.text||'')) return l;
+      var c=Object.assign({},l);
+      c.text=bosRomanText(l.text,true,mr);
+      if(l.words && l.words.length){
+        c.words=l.words.map(function(w,wi){
+          var t=bosRomanText(w.text,false,mr);
+          if(wi===0 && t) t=t.charAt(0).toUpperCase()+t.slice(1);
+          return Object.assign({},w,{text:t});
+        });
+      }
+      delete c._wt;
+      if(l.words && l.words.length) c._wt=l.words.map(function(w){return w.t;});
+      return c;
+    });
+    return copy;
+  }catch(e){ return data; }
+}
+
 })();
 </script>
 
@@ -4930,6 +5211,7 @@ init();
       </div>
       <div class="bos-ob-footer"><div class="bos-ob-count" id="bos-artist-count">Select at least <b>2</b> artists</div><button class="bos-ob-next" id="bos-artists-done" disabled>Done</button></div>
     </section>
+    <div class="bos-credit bos-credit-ob">Design by <b>Raj Pawar</b></div>
   </div>
 </div>
 
@@ -5881,7 +6163,6 @@ window.BoosterDiagnostics = {
   css.id='bos-adaptive-fps-style';
   css.textContent=`
     :root{--bos-refresh-rate:60}
-    html[data-bos-fps="120plus"] .bos-btn,html[data-bos-fps="120plus"] .card,html[data-bos-fps="120plus"] .glass-1,html[data-bos-fps="120plus"] .glass-2,html[data-bos-fps="120plus"] .glass-3{will-change:transform,opacity}
     @media(prefers-reduced-motion:reduce){html *{animation-duration:.001ms!important;transition-duration:.001ms!important;scroll-behavior:auto!important}}
   `;
   document.head.appendChild(css);
@@ -7185,7 +7466,7 @@ document.addEventListener('click',async function(e){
 },true);
 document.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target&&e.target.id==='bos-pl-name-i'){e.preventDefault();nameDone(true);}if(e.key==='Escape'){if($$id('bos-pl-name')&&$$id('bos-pl-name').classList.contains('open'))nameDone(false);else closePicker();}},true);
 
-function boot(){build();paintOff();setInterval(()=>{build();paintOff();},800);}
+function boot(){build();paintOff();setInterval(()=>{if(document.hidden)return;build();paintOff();},1500);}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);else boot();
 window.BoosterPlaylists={list:()=>pls,registerMix:m=>{mixes[m.id]=m;}};
 })();
@@ -7276,7 +7557,7 @@ document.addEventListener('click',async e=>{const b=e.target.closest&&e.target.c
     try{State.queue.splice(State.queueIndex+1);State.smartRadioRefillToken++;State.smartQueueBusy=false;if(State.shuffle&&Queue.buildShuffleOrder)Queue.buildShuffleOrder();toast('Building radio…');await SmartRadio.refill(24);renderQueuePanel();}catch(err){toast('Could not build radio');}}
 },true);
 
-function boot(){apBuild();apPaint();setInterval(()=>{apBuild();apPaint();},1500);
+function boot(){apBuild();apPaint();setInterval(()=>{if(document.hidden)return;apBuild();apPaint();},2000);
   const home=gid('view-home');if(home){new MutationObserver(debounce(injectDaily,400)).observe(home,{childList:true});}
   setTimeout(injectDaily,2000);}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);else boot();
@@ -7553,5 +7834,122 @@ html body:not(.bos-x) #full-player .fp-art-wrap{
 html:not(.bos-playing) body:not(.bos-x) #full-player .fp-art-wrap{scale:.88;box-shadow:0 14px 34px rgba(0,0,0,.35);}
 html.bos-playing body:not(.bos-x) #full-player .fp-art-wrap{box-shadow:0 30px 70px rgba(0,0,0,.5);}
 </style>
+<style id="bos-gap-css">
+/* ===== BoosterOS: Apple-Music-style instrumental gap dots (additive, does not touch lyric animation) ===== */
+.bos-gap{height:0;overflow:hidden;pointer-events:none;transition:height .5s cubic-bezier(.22,1,.36,1);flex:none;}
+.bos-gap.on{height:46px;}
+.bos-gap-in{height:46px;padding:0 4px;display:flex;align-items:center;transform-origin:left center;transform:scale(0);opacity:0;
+  transition:transform .55s cubic-bezier(.34,1.56,.64,1),opacity .35s ease;}
+.bos-gap.on .bos-gap-in{transform:scale(1);opacity:1;}
+.bos-gap.on.out .bos-gap-in{transform:scale(1.4);opacity:0;transition:transform .42s cubic-bezier(.4,0,.2,1),opacity .36s ease;}
+.bos-gap.out:not(.on) .bos-gap-in{transform:scale(1.4);opacity:0;}
+.bos-gap-dots{display:flex;gap:6px;transform-origin:left center;}
+.bos-gap.on .bos-gap-dots{animation:bosGapBreath 4s ease-in-out -1.3s infinite;}
+.bos-gap.paused .bos-gap-dots{animation-play-state:paused;}
+@keyframes bosGapBreath{0%,100%{scale:.88;}50%{scale:1.1;}}
+.bos-gap-dots i{display:block;width:12px;height:12px;border-radius:50%;background:#fff;opacity:var(--a,.26);}
+[data-theme="light"] .bos-gap-dots i{background:#141420;}
+/* previous line goes dim while the dots are showing (like Apple Music) */
+.lyrics-scroll.bos-in-gap .lyric-line.active{opacity:.5 !important;}
+body.low-end .bos-gap-dots{animation:none !important;}
+@media (prefers-reduced-motion: reduce){.bos-gap-dots{animation:none !important;}}
+
+/* ===== Apple-Music style lyrics: crossfade + glow + slow word up/down (final override) ===== */
+@property --wc{syntax:'<color>';inherits:false;initial-value:#ffffff;}
+@property --wr{syntax:'<length>';inherits:false;initial-value:8px;}
+@property --wa{syntax:'<number>';inherits:false;initial-value:.4;}
+#lyrics-view .lyric-line{
+  transition:color .9s cubic-bezier(.4,0,.2,1),opacity .9s cubic-bezier(.4,0,.2,1)!important;
+}
+#lyrics-view .lyric-line.karaoke-on .lyric-word{
+  display:inline-block;will-change:transform;
+  transition:color .9s cubic-bezier(.4,0,.2,1),text-shadow .9s cubic-bezier(.4,0,.2,1),transform 1s cubic-bezier(.4,0,.2,1)!important;
+}
+/* word being sung: rises slowly, glows warm cream, then settles down to soft white */
+#lyrics-view .lyric-line.karaoke-on.active .lyric-word.wdone{
+  color:var(--wc)!important;
+  text-shadow:0 0 var(--wr) rgba(255,222,176,var(--wa))!important;
+  animation:bosWordSung 1.35s cubic-bezier(.45,.05,.3,1) both!important;
+}
+@keyframes bosWordSung{
+  0%  {--wc:rgba(255,255,255,.45);--wr:0px; --wa:0;  transform:translateY(3px);}
+  35% {--wc:#ffe9cb;              --wr:18px;--wa:.9; transform:translateY(-3px);}
+  100%{--wc:#ffffff;              --wr:10px;--wa:.42;transform:translateY(0);}
+}
+/* plain / estimated lines: slow gentle float + glow on the swept text */
+#lyrics-view .lyric-line.active:not(.karaoke-on){
+  animation:bosLineFloat 1.4s cubic-bezier(.45,.05,.3,1) both!important;
+}
+@keyframes bosLineFloat{
+  0%{opacity:.55;transform:translateY(5px);}
+  40%{opacity:1;transform:translateY(-2px);}
+  100%{opacity:1;transform:translateY(0);}
+}
+#lyrics-view .lyric-line.active:not(.karaoke-on) .lyric-fill{
+  text-shadow:0 0 14px rgba(255,222,176,.5)!important;
+}
+@media (prefers-reduced-motion:reduce){
+  #lyrics-view .lyric-line.karaoke-on.active .lyric-word.wdone,
+  #lyrics-view .lyric-line.active:not(.karaoke-on){animation:none!important;}
+}
+</style>
+<!-- ===================== BOOSTER OS V24 TURBO (final perf layer) ===================== -->
+<style id="bos-v24-turbo">
+/* 1. Heart buttons in EVERY song row had their own backdrop-filter. The background behind is already a 40-70px blurred layer,
+      so the extra blur was invisible but cost one GPU blur pass per row while scrolling. */
+.glass-1,.row-item .glass-1,.heart-btn{backdrop-filter:none!important;-webkit-backdrop-filter:none!important;}
+
+/* 2. Lyrics: will-change:transform on EVERY word = hundreds of GPU layers. Only animating words get promoted now. */
+#lyrics-view .lyric-line.karaoke-on .lyric-word{will-change:auto!important;}
+
+/* 3. Animated blur() filters repaint the whole element every frame -> opacity/transform only */
+@keyframes bosItem{from{opacity:0;transform:translateY(14px) scale(.9)}}
+@keyframes bosItemOut{to{opacity:0;transform:translateY(10px) scale(.94)}}
+@keyframes bosVtOut{to{opacity:0;transform:translateX(-5%) scale(.97)}}
+@keyframes bosVtIn{from{opacity:0;transform:translateX(7%) scale(.97)}}
+@keyframes bosDrop{from{opacity:0;translate:0 -46px;scale:1.28;rotate:-8deg}}
+@keyframes bosSym{from{opacity:0;scale:.3;rotate:-60deg}}
+@keyframes bosSkipN{from{opacity:0;translate:46px 0}}
+@keyframes bosSkipP{from{opacity:0;translate:-46px 0}}
+@keyframes bosIsland{0%{opacity:0;transform:translateY(-16px) scale(.55,.45)}100%{opacity:1;transform:none}}
+.bos-v9-fx-panel{filter:none!important;transition:opacity .28s var(--ease-smooth),transform .45s var(--sp,var(--ease-spring)),visibility 0s .45s!important;}
+
+/* 4. Equalizer bars animated `height` (layout every frame). Same look, transform only. */
+.eq-bars span{height:14px;animation-name:bosEqT!important;}
+@keyframes bosEqT{0%,100%{transform:scaleY(.29)}25%{transform:scaleY(1)}50%{transform:scaleY(.5)}75%{transform:scaleY(.86)}}
+.bos-dyn-island .bos-di-eq span{height:14px;transform-origin:50% 100%;animation-name:bosDiEqT!important;}
+@keyframes bosDiEqT{0%,100%{transform:scaleY(.29)}50%{transform:scaleY(1)}}
+
+/* 5. Background: full-screen blend-mode animation repainted the screen every frame on desktop too */
+#ambient .amb-tint{animation:none!important;}
+@media (min-width:981px) and (pointer:fine){
+  #ambient .amb-layer{filter:blur(48px) saturate(1.3) brightness(.75);}
+  [data-theme="light"] #ambient .amb-layer{filter:blur(48px) saturate(1.15) brightness(1.15);}
+}
+
+/* 6. Cover-art breathing runs only when the player/lyrics are actually visible */
+#full-player:not(.open) .fp-art-wrap{animation-play-state:paused!important;}
+body:has(#lyrics-view.open) .fp-art-wrap{animation:none!important;}
+
+/* 7. Long song lists: skip layout+paint of rows that are off-screen */
+.row-item{content-visibility:auto;contain-intrinsic-size:auto 66px;}
+.row-item.bos-dragging,.row-item.dragging{content-visibility:visible;}
+
+/* 8. Desktop: no hover hit-testing / hover transitions while the wheel is scrolling */
+@media (hover:hover) and (pointer:fine){
+  html.bos-scrolling #view-scroll *{pointer-events:none!important;}
+}
+</style>
+<script id="bos-v24-turbo-js">
+(function(){'use strict';
+  var vs=document.getElementById('view-scroll'); if(!vs) return;
+  var root=document.documentElement, t=0;
+  vs.addEventListener('scroll',function(){
+    if(!root.classList.contains('bos-scrolling')) root.classList.add('bos-scrolling');
+    clearTimeout(t); t=setTimeout(function(){root.classList.remove('bos-scrolling');},140);
+  },{passive:true});
+})();
+</script>
+
 </body>
 </html>
