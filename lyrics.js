@@ -797,6 +797,69 @@ Loanवर जिंदगी, भाड्याची कार भाई
 [03:15.40]सिंघम
 [03:17.17]
 
-    `}
+    `},
+   
+  {
+    title: "Hood life",
+    artist: "Sambata",
+    lrc: `
+   
+[ar:SAMBATA, Riar Saab]
+[00:11.00] Hood life 26
+[00:16.00] Riar Saab in the hood
+[00:18.00] Beech aamhi swabhavane mood madhi rude wale kadhi thambavat nahi
+[00:22.00] Hood madhe dude wale pora majhya mastan rastyavar bastana aamhi
+[00:27.00] Pahilyapasun hakkane hood wale aamhi
+[00:30.00] Swabhavane mood madhi rude wale kadhi thambavat nahi
+[00:32.00] Hood madhi dude wale pora majhe mastan rastyavar bastana aamhi
+[00:37.00] Pahilyapasun hakkane hood wale
+[00:41.00] Ghaslo ghasat mi vajat mi sumadhi scene madhi
+[00:43.00] Ho mi shivay kuni mala kela nahi seal
+[00:46.00] Kadhi vajto nivant kadhi chill madhi
+[00:49.00] Hyanchya bhinti futtat jevha don ghusto drill madhi
+[00:52.00] Chill madhil mahina jain tuzha majhya light chya bill madhi
+[00:55.00] Ho alone madhi kanat headphone madhe vachto Tupac
+[00:58.00] Tevha jato mi zone madhi gadi chalavto tevha pahije nahi kon madhi
+[01:01.00] Blood madhi josh bharto YG peace deto Khalifa
+[01:05.00] Ghari jaun diwana nahi kadhi kuthlya pappachya paricha
+[01:08.00] Dambich gabad mi tar khalnayak
+[01:11.00] Majha swabhav pan trasdayak sanki vyakti
+[01:14.00] Majhi aatma kali majhi bhutavar bhakti
+[01:17.00] Distoy satki pan nahi mi kapti lifetime hip nahi
+[01:20.00] Kunachi sakti nako jabardasti aamhi gang bank
+[01:24.00] Tuzhi toli thas shotchi bhumika basti notchi
+[01:26.00] Suvidha disti gadi vakdi roj majhi hatke
+[01:30.00] Aamcha kaam vichitra baslya jagi halvato lambche sutra
+[01:33.00] Majhyasamor kamvaj karan Yamraj majha mitra Don
+[01:36.00] Aamhi swabhavane mood madhi rude wale kadhi thambavat nahi
+[01:40.00] Hood madhe dude wale pora majhya mastan rastyavar bastana aamhi
+[01:45.00] Pahilyapasun hakkane hood wale
+[01:48.00] Aamhi swabhavane mood madhi rude wale kadhi thambavat nahi
+[01:51.00] Hood madhe dude wale pora majhya mastan rastyavar bastana aamhi
+[01:57.00] Pahilyapasun hakkane hood wale
+[01:57.00] Born Punjab surrounded Maratha
+[02:01.00] Shot stop kari baithe munde pound tamaka Jatt
+[02:03.00] Kala kare ho baki kalakar, toh Jatt grounded
+[02:06.00] Rehna ahankar toh bolkar tu thode tedhe
+[02:10.00] Chalti munde jandar circle trusted rakhe
+[02:13.00] Life saadi shakla te scar facility mili
+[02:16.00] Katata supne jagte hood madhe entry mag
+[02:20.00] Charcha look chi amcha diggaj karbhara diggaj
+[02:22.00] Vyakti Don aani Saab mhanje grown up
+[02:25.00] Vasti jitha kashtachi payri tithun aala varti
+[02:28.00] Hridayasle deth mothe toh shakin jithe pair ulte
+[02:32.00] Kare scene rab toh kha ke aaye kismat mehnat na
+[02:36.00] Badal de hath di lakeer
+[02:38.00] Video chikli gangs jaande chalana hathi
+[02:41.00] Karname blood rishta thar sadka te Pune
+[02:45.00] Bombay cheer dete kaal rahdi mothe atkingi
+[02:48.00] Kade fukre naal yaari saadi nirali kare cam
+[02:51.00] Chandi rangi sanu kare na gali gang zero var
+[02:54.00] Aayeli company feeling layi kadhi star aali aapan
+[02:57.00] Gali aamhi swabhavane mood madhi rude wale
+[03:00.00] Kadhi thambavat nahi hood madhi dude wale pora
+[03:03.00] Majhe mastan rastyavar bastana aamhi
+[03:05.00] Pahilyapasun hakkane hood wale
+`}
 
 ];
