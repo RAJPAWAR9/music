@@ -670,6 +670,14 @@ html.bos-low-power .orb,html.bos-low-power .glow,html.bos-low-power canvas{displ
 .bos-credit-ob{text-align:center;padding:6px 0 calc(8px + var(--safe-b));color:rgba(255,255,255,.6);position:relative;z-index:2;}
 .bos-credit-ly{text-align:center;padding:8px 0 calc(10px + var(--safe-b));flex:none;color:inherit;opacity:.6;}
 </style>
+<style id="bos-v25-mobile">
+*{-webkit-tap-highlight-color:transparent;}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%;}
+button,[data-action],.row-item,.ctrl-btn{touch-action:manipulation;}
+body{overscroll-behavior-y:none;}
+.row-list>.row-item{content-visibility:auto;contain-intrinsic-size:auto 64px;}
+@media (hover:none){.row-item:hover{transform:none;}}
+</style>
 </head>
 <body data-theme="dark">
 
@@ -934,7 +942,8 @@ const Api={
   getAlbum(id,signal){return apiFetch(MUSIC_API+"/albums?id="+encodeURIComponent(id),"album:"+id,300000,signal);},
   getArtist(id,signal){return apiFetch(MUSIC_API+"/artists/"+encodeURIComponent(id),"artist:"+id,300000,signal);},
   getArtistAlbums(id,page,signal){return apiFetch(MUSIC_API+"/artists/"+encodeURIComponent(id)+"/albums?page="+(page||0),"artist-albums:"+id+":"+(page||0),300000,signal);},
-  getPlaylist(id,signal){return apiFetch(MUSIC_API+"/playlists?id="+encodeURIComponent(id),"playlist:"+id,300000,signal);}
+  getPlaylist(id,signal,page,limit){page=page||0;limit=limit||100;return apiFetch(MUSIC_API+"/playlists?id="+encodeURIComponent(id)+"&page="+page+"&limit="+limit,"playlist:"+id+":"+page+":"+limit,300000,signal);},
+  getArtistSongs(id,page,signal){return apiFetch(MUSIC_API+"/artists/"+encodeURIComponent(id)+"/songs?page="+(page||0)+"&sortBy=popularity&sortOrder=desc","artist-songs:"+id+":"+(page||0),300000,signal);}
 };
 
 /* ---------------- NORMALIZERS ---------------- */
@@ -1275,7 +1284,42 @@ const audioA = $("#audio-el");
 const audioB = $("#audio-el-2");
 const audios = [audioA, audioB];
 let activeIdx = 0;
-let crossfadeRAF = 0, crossfadeTimer = 0, crossfadeRunning = false, crossfadeGenId = 0;
+let crossfadeRAF = 0, crossfadeTimer = 0, crossfadeRunning = false, crossfadeGenId = 0, crossfadeTick = null;
+/* v25: Worker-driven ticker. Page timers get throttled when the screen is off / app is in background;
+   a dedicated worker keeps ticking, so the fade stays smooth and the next song is triggered on time. */
+const BgTick=(function(){
+  let w=null,subs=new Set(),tried=false;
+  function start(){
+    if(w||tried)return; tried=true;
+    try{
+      const url=URL.createObjectURL(new Blob(['var t=0;onmessage=function(e){if(e.data==="start"){if(!t)t=setInterval(function(){postMessage(1)},60);}else{clearInterval(t);t=0;}}'],{type:'text/javascript'}));
+      w=new Worker(url); w.onmessage=function(){subs.forEach(function(f){try{f();}catch(e){}});};
+      w.onerror=function(){w=null;};
+    }catch(e){w=null;}
+  }
+  return{
+    add(f){subs.add(f);start();if(w)try{w.postMessage("start");}catch(e){}return f;},
+    remove(f){if(!f)return;subs.delete(f);if(!subs.size&&w)try{w.postMessage("stop");}catch(e){}}
+  };
+})();
+let _cfLeadSec=2.5;
+function cfLead(){return _cfLeadSec;}
+function cfLeadUpdate(ms){_cfLeadSec=Math.max(1.5,Math.min(7,1.2+(ms/1000)*1.6));}
+/* one trigger check, called from timeupdate AND from the background ticker */
+function cfCheck(el){
+  try{
+    if(!el||el!==primaryAudio()||!State.currentTrack)return;
+    if(!(State.settings.autoplayNext&&State.repeat!=="one"&&State.settings.crossfade&&State.settings.crossfadeDuration>0))return;
+    if(!Number.isFinite(el.duration)||el.duration<=0||el.paused)return;
+    const effective=effectiveCrossfadeDuration(State.currentTrack),remaining=el.duration-el.currentTime;
+    if(State._crossfadeTrackId!==State.currentTrack.id){State._crossfadeTrackId=State.currentTrack.id;State._crossfadeTriggered=false;}
+    if(!crossfadeRunning&&!State._crossfadeTriggered&&!State._autoTransitionInFlight&&effective>0&&remaining>0&&remaining<=effective+cfLead()){
+      State._crossfadeTriggered=true;State._autoTransitionInFlight=true;
+      Player.next(true).then(ok=>{if(!ok){State._autoTransitionInFlight=false;State._crossfadeTriggered=false;}}).catch(()=>{State._autoTransitionInFlight=false;State._crossfadeTriggered=false;});
+    }
+  }catch(e){}
+}
+BgTick.add(function(){cfCheck(primaryAudio());});
 function primaryAudio(){ return audios[activeIdx]; }
 function secondaryAudio(){ return audios[1-activeIdx]; }
 audioA.volume = State.volume; audioB.volume = 0;
@@ -1307,7 +1351,7 @@ function effectiveCrossfadeDuration(track){
   return Math.max(.35,configured);
 }
 function cancelCrossfade({restorePrimary=true}={}){
-  crossfadeGenId++; if(crossfadeRAF){cancelAnimationFrame(crossfadeRAF);crossfadeRAF=0;} if(crossfadeTimer){clearTimeout(crossfadeTimer);crossfadeTimer=0;}
+  crossfadeGenId++; if(crossfadeRAF){cancelAnimationFrame(crossfadeRAF);crossfadeRAF=0;} if(crossfadeTimer){clearInterval(crossfadeTimer);crossfadeTimer=0;} if(crossfadeTick){BgTick.remove(crossfadeTick);crossfadeTick=null;}
   const from=primaryAudio(),to=secondaryAudio();
   if(crossfadeRunning||to.src){try{to.pause();}catch(e){} try{to.removeAttribute("src");to.load();}catch(e){} try{to.volume=0;}catch(e){}}
   if(restorePrimary&&from)try{from.volume=State.volume;}catch(e){}
@@ -1318,27 +1362,29 @@ function runCrossfade(fromEl,toEl,durationSec,generation,completedTrackId){
   completedTrackId = completedTrackId || (fromEl && fromEl.dataset ? fromEl.dataset.boosterTrackId : null);
   const genId=generation||++crossfadeGenId; crossfadeGenId=genId; crossfadeRunning=true;
   if(completedTrackId){ Store.remove("pos_"+completedTrackId); State._lastSavedPos=0; }
-  const start=performance.now(), dur=Math.max(.3,Number(durationSec)||0)*1000;
+  const start=performance.now();
+  let dur=Math.max(.3,Number(durationSec)||0)*1000;
+  /* never fade longer than what is left of the outgoing song (avoids a hard cut mid-fade) */
+  try{ if(Number.isFinite(fromEl.duration)&&fromEl.duration>0){ const rem=(fromEl.duration-fromEl.currentTime-.15)*1000; dur=Math.max(300,Math.min(dur,rem)); } }catch(e){}
   function finish(){
     if(genId!==crossfadeGenId)return;
+    if(crossfadeTimer){clearInterval(crossfadeTimer);crossfadeTimer=0;} if(crossfadeTick){BgTick.remove(crossfadeTick);crossfadeTick=null;}
     try{fromEl.pause();}catch(e){} try{fromEl.removeAttribute("src");fromEl.load();}catch(e){} try{fromEl.volume=0;}catch(e){} try{delete fromEl.dataset.boosterTrackId;}catch(e){}
     try{toEl.volume=State.volume;}catch(e){}
-    crossfadeRunning=false; crossfadeRAF=0; crossfadeTimer=0; State._autoTransitionInFlight=false;
+    crossfadeRunning=false; crossfadeRAF=0; State._autoTransitionInFlight=false;
   }
   function step(){
     if(genId!==crossfadeGenId||!crossfadeRunning)return;
-    const elapsed=performance.now()-start;
-    const t=clamp(elapsed/dur,0,1), ease=t*t*(3-2*t);
-    try{fromEl.volume=State.volume*(1-ease);}catch(e){}
-    try{toEl.volume=State.volume*ease;}catch(e){}
-    if(t>=1){ finish(); return; }
-    // setTimeout keeps the transition state progressing even when requestAnimationFrame
-    // is paused/throttled in a background tab.
-    crossfadeTimer=setTimeout(step,40);
+    const t=clamp((performance.now()-start)/dur,0,1);
+    /* equal-power curve: no loudness dip in the middle */
+    try{fromEl.volume=clamp(State.volume*Math.cos(t*Math.PI/2),0,1);}catch(e){}
+    try{toEl.volume=clamp(State.volume*Math.sin(t*Math.PI/2),0,1);}catch(e){}
+    if(t>=1)finish();
   }
   step();
-  // Hard watchdog: never allow a background-tab throttle to leave auto-transition locked.
-  setTimeout(()=>{ if(genId===crossfadeGenId&&crossfadeRunning) finish(); },dur+1200);
+  crossfadeTick=BgTick.add(step);
+  crossfadeTimer=setInterval(step,50); /* fallback if workers are unavailable */
+  setTimeout(()=>{ if(genId===crossfadeGenId&&crossfadeRunning) finish(); },dur+1500);
 }
 
 /* ============================================================
@@ -1415,7 +1461,7 @@ const Player={
     if(replayingFinishedTrack) Store.remove("pos_"+track.id);
     const startAt=Number.isFinite(saved)&&saved>2&&saved<Math.max(0,(track.duration||0)-3)?saved:0;
     History.add(track);renderMiniPlayer();renderFullPlayer();renderQueuePanel();Store.set("lastSong",track);SystemMedia.update(track);Lyrics.loadFor(track);SmartRadio.onTrackStarted(track);
-    if(canCF){const from=cur,to=secondaryAudio(),duration=effectiveCrossfadeDuration(State.currentTrack),generation=++crossfadeGenId;updateAmbient(track,duration);try{to.volume=0;await loadAndPlay(to,track,startAt);}catch(err){if(myToken!==this._playToken){fadeStop(to);return false;}State._autoTransitionInFlight=false;updateAmbient(track);return this._hardSwitch(track,startAt,myToken);}if(myToken!==this._playToken||generation!==crossfadeGenId){fadeStop(to);return false;}activeIdx=1-activeIdx;State.isPlaying=true;updatePlayIcons();SystemMedia.state();document.body.classList.toggle("playing-anim",State.settings.animatedArtwork);runCrossfade(from,to,duration,generation,outgoingTrackId);return true;}
+    if(canCF){const from=cur,to=secondaryAudio(),duration=effectiveCrossfadeDuration(State.currentTrack),generation=++crossfadeGenId;updateAmbient(track,duration);try{to.volume=0;const _t0=performance.now();await loadAndPlay(to,track,startAt);cfLeadUpdate(performance.now()-_t0);}catch(err){if(myToken!==this._playToken){fadeStop(to);return false;}State._autoTransitionInFlight=false;updateAmbient(track);return this._hardSwitch(track,startAt,myToken);}if(myToken!==this._playToken||generation!==crossfadeGenId){fadeStop(to);return false;}activeIdx=1-activeIdx;State.isPlaying=true;updatePlayIcons();SystemMedia.state();document.body.classList.toggle("playing-anim",State.settings.animatedArtwork);runCrossfade(from,to,duration,generation,outgoingTrackId);return true;}
     updateAmbient(track);return this._hardSwitch(track,startAt,myToken);
   },
   async _hardSwitch(track,startAt,myToken){const el=primaryAudio(),other=secondaryAudio();fadeStop(other);try{el.volume=State.volume;await loadAndPlay(el,track,startAt);if(myToken!==this._playToken)return false;State.isPlaying=true;State._autoTransitionInFlight=false;SystemMedia.state();}catch(err){if(myToken!==this._playToken)return false;State.isPlaying=false;State._autoTransitionInFlight=false;SystemMedia.state();toast("Playback couldn't start automatically. Tap play.","error");return false;}updatePlayIcons();document.body.classList.toggle("playing-anim",State.isPlaying&&State.settings.animatedArtwork);return true;},
@@ -1520,13 +1566,7 @@ function paintProgress(el){
 function bindAudioEvents(el){
   el.addEventListener("timeupdate",()=>{
     if(el!==primaryAudio()||!el.duration)return;paintProgress(el);
-    if(State.settings.autoplayNext&&State.repeat!=="one"&&State.settings.crossfade&&State.settings.crossfadeDuration>0&&Number.isFinite(el.duration)&&el.duration>0){
-      const effective=effectiveCrossfadeDuration(State.currentTrack),remaining=el.duration-el.currentTime;
-      if(State._crossfadeTrackId!==State.currentTrack?.id){State._crossfadeTrackId=State.currentTrack?.id||null;State._crossfadeTriggered=false;}
-      if(!crossfadeRunning&&!State._crossfadeTriggered&&!State._autoTransitionInFlight&&effective>0&&remaining>0&&remaining<=effective+.35){
-        State._crossfadeTriggered=true;State._autoTransitionInFlight=true;Player.next(true).then(ok=>{if(!ok){State._autoTransitionInFlight=false;State._crossfadeTriggered=false;}}).catch(()=>{State._autoTransitionInFlight=false;State._crossfadeTriggered=false;});
-      }
-    }
+    cfCheck(el);
     updateActiveLyric(el.currentTime,false);SystemMedia.position();
     if(State.currentTrack&&State.settings.rememberPosition&&Math.abs(el.currentTime-(State._lastSavedPos||0))>=5){State._lastSavedPos=el.currentTime;Store.set("pos_"+State.currentTrack.id,el.currentTime);}
   });
@@ -2321,6 +2361,7 @@ async function loadLyricsFor(track){
   const apply = data=>{
     if(data.estimated){ data = {synced:false,estimated:false,wordSynced:false,source:(data.source||"").replace("-ESTIMATED",""),lines:lyPlainLines(data.lines.map(l=>l.text).join("\n"))}; }
     data = bosRomanizeLyrics(data);
+    try{ if(window.bosFixLyrics) data = window.bosFixLyrics(data); }catch(e){}
     if(data.synced) lyricsPrepareWords(data.lines);
     currentLyrics = data; resetEstimatedLyricsClock();
     State.lyricsData = {status:"ok", synced:data.synced?data.lines:null, plain:data.synced?"":data.lines.map(l=>l.text).join("\n"), estimated:false, source:data.source||""};
@@ -4915,7 +4956,7 @@ async function albumTracks(albums,signal,onBatch){
    const batch=await Promise.all(albums.slice(i,i+3).map(async a=>{
      try{const r=await Api.getAlbum(a.id,signal);const x=normalizeAlbum(r&&r.data);return (x&&x.songs)||[];}catch(e){return []}
    }));
-   all.push(...batch.flat()); onBatch&&onBatch(i+batch.length,albums.length,uniq(all).length);
+   all.push(...batch.flat()); onBatch&&onBatch(i+batch.length,albums.length,uniq(all).length,all);
    await sleep(80);
  }
  return uniq(all);
@@ -4929,23 +4970,70 @@ function updateArtistRows(id,songs,countText){
  const t=titles.find(x=>/^Songs|^Top Songs/.test(x.textContent.trim())); if(t)t.textContent='Songs ('+songs.length+')'+(countText?' · '+countText:'');
 }
 const previous=renderArtistDetail;
+async function artistSongsPaged(id,signal,onPage){
+ let all=[];
+ for(let p=0;p<40;p++){
+   if(signal&&signal.aborted)break;
+   try{
+     const r=await Api.getArtistSongs(id,p,signal), d=r&&r.data;
+     const rows=((d&&(d.songs||d.results))||[]).map(normalizeSong).filter(Boolean);
+     const before=uniq(all).length; all=uniq(all.concat(rows));
+     if(!rows.length||all.length===before)break;
+     onPage&&onPage(all); await sleep(50);
+   }catch(e){break;}
+ }
+ return uniq(all);
+}
 renderArtistDetail=async function(id){
  await previous(id);
  if(State.view!=='artist'||String(State.viewParams.id)!==String(id))return;
  const signal=State._detailAbort&&State._detailAbort.signal, seq=State._detailSeq;
+ const alive=()=>!(signal&&signal.aborted)&&seq===State._detailSeq&&State.view==='artist'&&String(State.viewParams.id)===String(id);
  try{
    const rr=await Api.getArtist(id,signal); const artist=normalizeArtist(rr&&rr.data); if(!artist)return;
-   let songs=uniq(artist.topSongs||[]); updateArtistRows(id,songs,'building full catalog…');
-   const [searchSongs,albums]=await Promise.all([searchArtistCatalog(artist,signal,n=>updateArtistRows(id,uniq(songs.concat(searchSongs||[])),'searching… '+n)),allAlbums(id,signal)]);
-   if(signal&&signal.aborted||seq!==State._detailSeq||State.view!=='artist')return;
-   songs=uniq(songs.concat(searchSongs)); updateArtistRows(id,songs,'loading album tracks…');
-   const fromAlbums=await albumTracks(albums,signal,(done,total,found)=>{
-      const merged=uniq(songs.concat(fromAlbums||[])); updateArtistRows(id,merged,'albums '+done+'/'+total+' · '+merged.length+' tracks');
-   });
-   if(signal&&signal.aborted||seq!==State._detailSeq||State.view!=='artist')return;
-   songs=uniq(songs.concat(fromAlbums));
-   updateArtistRows(id,songs,'complete');
- }catch(e){/* retain base renderer if a catalog expansion request fails */}
+   let base=uniq(artist.topSongs||[]), pagedS=[], searchS=[], albumS=[];
+   const merge=()=>uniq(base.concat(pagedS,albumS,searchS));
+   const paint=t=>{ if(alive()) updateArtistRows(id,merge(),t); };
+   paint('loading all songs…');
+   const pagedP=artistSongsPaged(id,signal,a=>{pagedS=a;paint('loading…');});
+   const searchP=searchArtistCatalog(artist,signal,()=>{});
+   const albums=await allAlbums(id,signal);
+   albumS=await albumTracks(albums,signal,(d,t,f,all)=>{albumS=all;paint('albums '+d+'/'+t);});
+   pagedS=await pagedP; searchS=await searchP;
+   if(!alive())return;
+   updateArtistRows(id,merge(),'complete');
+ }catch(e){/* keep what is already shown */}
+};
+})();
+
+/* [v25: full playlist loader - all pages, not just first 10] */
+(function(){
+'use strict';
+const uniq=l=>{const s=new Set();return (l||[]).filter(x=>x&&x.id&&!s.has(String(x.id))&&(s.add(String(x.id)),true));};
+const prev=renderPlaylistDetail;
+renderPlaylistDetail=async function(id){
+ await prev(id);
+ if(State.view!=='playlist'||String(State.viewParams.id)!==String(id))return;
+ const signal=State._detailAbort&&State._detailAbort.signal, seq=State._detailSeq;
+ const alive=()=>!(signal&&signal.aborted)&&seq===State._detailSeq&&State.view==='playlist'&&String(State.viewParams.id)===String(id);
+ try{
+   let all=[], total=0;
+   for(let p=0;p<40;p++){
+     if(!alive())return;
+     const r=await Api.getPlaylist(id,signal,p,100);
+     const pl=normalizePlaylist(r&&r.data); if(!pl)break;
+     total=pl.songCount||total;
+     const rows=(pl.songs||[]).filter(Boolean);
+     const before=all.length; all=uniq(all.concat(rows));
+     if(!rows.length||all.length===before)break;
+     if(!alive())return;
+     storeCtx('playlist-'+id,all);
+     const list=document.querySelector('#view-playlist .row-list');
+     if(list)list.innerHTML=all.map((x,i)=>songRow(x,i,{ctxKey:'playlist-'+id})).join('');
+     const sub=document.querySelector('#view-playlist .detail-sub'); if(sub)sub.textContent=all.length+' songs';
+     if(total&&all.length>=total)break;
+   }
+ }catch(e){/* keep first page */}
 };
 })();
 
@@ -5080,7 +5168,7 @@ var bosGapSungEnd=null;
 
 
 /* ===== BoosterOS: Roman lyrics (Indic script -> Roman letters). English / Roman text is left untouched. ===== */
-var BOS_ROMAN_LYRICS=true;
+var BOS_ROMAN_LYRICS=false;
 var bosRomanTables=(function(){
   var C={0x15:'k',0x16:'kh',0x17:'g',0x18:'gh',0x19:'ng',0x1A:'ch',0x1B:'chh',0x1C:'j',0x1D:'jh',0x1E:'ny',
     0x1F:'t',0x20:'th',0x21:'d',0x22:'dh',0x23:'n',0x24:'t',0x25:'th',0x26:'d',0x27:'dh',0x28:'n',0x29:'n',
@@ -5165,11 +5253,18 @@ function bosRomanWord(word,mr){
     if(q.v) out+=q.v; else if(q.inh && !q.del) out+='a';
     if(q.nas){
       var nx=units[k+1];
-      if(nx && STOP.test(nx.c)) out+=(/^(p|ph|b|bh|m)/.test(nx.c)?'m':'n');
+      if(!nx) out+='n';
+      else if(nx.c) out+=(/^(p|ph|b|bh|m)/.test(nx.c)?'m':'n');
     }
     if(q.vis) out+='h';
   }
-  return out;
+  return bosRomanPost(out);
+}
+var BOS_ROMAN_POST={men:'mein',kyaa:'kya',too:'tu',ham:'hum',kaa:'ka',kee:'ki',hae:'hai',tho:'toh'};
+function bosRomanPost(w){
+  if(BOS_ROMAN_POST.hasOwnProperty(w)) return BOS_ROMAN_POST[w];
+  if(w.length>=4 && /[^aeiou]aa$/.test(w)) return w.slice(0,-1);
+  return w;
 }
 function bosRomanText(str,cap,mr){
   if(!str) return str;
@@ -8045,5 +8140,109 @@ body:has(#lyrics-view.open) .fp-art-wrap{animation:none!important;}
 })();
 </script>
 
+
+<script id="bos-v25-lyricfix">
+/* v25: lyric spelling cleaner (runs on every lyric before display; never edits the cache) */
+(function(){
+'use strict';
+var CP={0x20AC:0x80,0x201A:0x82,0x0192:0x83,0x201E:0x84,0x2026:0x85,0x2020:0x86,0x2021:0x87,0x02C6:0x88,0x2030:0x89,0x0160:0x8A,0x2039:0x8B,0x0152:0x8C,0x017D:0x8E,0x2018:0x91,0x2019:0x92,0x201C:0x93,0x201D:0x94,0x2022:0x95,0x2013:0x96,0x2014:0x97,0x02DC:0x98,0x2122:0x99,0x0161:0x9A,0x203A:0x9B,0x0153:0x9C,0x017E:0x9E,0x0178:0x9F};
+function demoji(s){
+  if(!/[\u00C2\u00C3\u00E2][\u0080-\u00BF\u0152-\u2122]/.test(s)) return s;
+  try{
+    var bytes=[],i,c;
+    for(i=0;i<s.length;i++){ c=s.charCodeAt(i); if(c<256) bytes.push(c); else if(CP[c]) bytes.push(CP[c]); else return s; }
+    return new TextDecoder('utf-8',{fatal:true}).decode(new Uint8Array(bytes));
+  }catch(e){ return s; }
+}
+var ENT={amp:'&',quot:'"',apos:"'",lt:'<',gt:'>',nbsp:' ',rsquo:"'",lsquo:"'",ldquo:'"',rdquo:'"',hellip:'...'};
+function ents(s){
+  if(s.indexOf('&')<0) return s;
+  return s.replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi,function(m,g){
+    try{
+      if(g.charAt(0)==='#') return String.fromCodePoint(g.charAt(1).toLowerCase()==='x'?parseInt(g.slice(2),16):parseInt(g.slice(1),10));
+    }catch(e){ return m; }
+    var v=ENT[g.toLowerCase()]; return v===undefined?m:v;
+  });
+}
+/* canonical : common wrong / mixed spellings (Hinglish) */
+var GROUPS=[
+['tumhe','tumhein','tumhain','tumhen','tumhey'],['mujhe','mujhey','mujhay','mjhe','mujhee'],['tujhe','tujhey','tujhay','tujhee'],
+['nahi','nhi','nahee','nahii','nahiin','nahin'],['kyun','kyu','kyon','kyoon','kyunn'],['kyunki','kyonki','kyuki','kyunke'],['kya','kyaa','kyaaa'],
+['bhi','bhee','bhii'],['abhi','abhee'],['kabhi','kabhee'],['sabhi','sabhee'],['phir','fir','phirr'],['pyaar','pyar','pyaaar','pyaarr'],
+['mohabbat','mohobbat','muhabbat','mohabat','muhobbat'],['ishq','ishk','ishaq'],['dil','dill'],['zindagi','zindagee','zindgi','zindagii','jindagi','zindaghi'],
+['aankhen','ankhen','aankhein','ankhein','aankhe','ankhe'],['aasman','asman','aasmaan','asmaan'],['barsaat','barsat'],
+['khwaab','khwab','khawab','khawaab','khuwab','khvab'],['intezaar','intezar','intazaar','intazar'],['ehsaas','ehsas','ahsaas','ahsas'],
+['duniya','dunia','duniyaa','dunya'],['yaadein','yaaden','yaadain','yadein','yaden'],['hamesha','humesha','hamesa','hameshaa','humesa'],
+['saath','sath','saathh'],['bahut','bohot','bahot','bohut','bhut','bahuth'],['zara','zra'],
+['tumhara','tumhaara','tumara','tumhra'],['tumhare','tumhaare','tumare'],['tumhari','tumhaari','tumari'],
+['mera','meraa'],['meri','meree'],['mere','merey','meray'],['tera','teraa'],['teri','teree'],['tere','terey','teray'],
+['apna','apnaa'],['apni','apnee'],['apne','apney'],['humara','hamara','humaara','hamaara'],['jaan','jaann','jaaan'],
+['jahan','jahaan'],['kahan','kahaan'],['yahan','yahaan'],['wahan','wahaan','vahan','vahaan'],['subah','subha','subaha','subeh'],
+['mausam','mosam','mausaam'],['mehfil','mahfil','mehfeel'],['bewafa','bevafa','bewafaa'],['wafa','vafa'],['dua','duaa'],
+['shayad','shaayad','shayed'],['waqt','vaqt','vakt','wakt'],['zamana','zamaana','jamana','jamaana'],['zaroor','zaruur','zarur','jaroor','jarur'],
+['mushkil','mushqil','muskil'],['kaise','kaisey','kaisay'],['jaise','jaisey'],['aise','aisey','aisay'],['waise','vaise','waisey'],
+['kuch','kuchh'],['koi','koyi','koee'],['jhooth','jhoot','jhut','jhuth'],['tanha','tanhaa'],['tanhai','tanhaai','tanhayi'],
+['kismat','kismet','qismat'],['sukoon','sukun','sukhoon'],['junoon','junun'],['rooh','ruh'],['manzil','manjil'],['tarah','tarha'],
+['baatein','baaten','baatain','baten'],['khushi','khushee','khushii','khoshi'],['khushboo','khushbu','khushbo'],['chehra','chehraa','chahra'],
+['tasveer','tasweer','tasvir'],['tamanna','tamannaa','tammana'],['ummeed','umeed','umid','ummid'],['ilzaam','ilzam'],['hain','hein','haiin']
+];
+var DICT={};
+GROUPS.forEach(function(g){ for(var i=1;i<g.length;i++) DICT[g[i]]=g[0]; });
+var CONTR={dont:"don't",cant:"can't",wont:"won't",didnt:"didn't",doesnt:"doesn't",isnt:"isn't",wasnt:"wasn't",arent:"aren't",couldnt:"couldn't",wouldnt:"wouldn't",shouldnt:"shouldn't",havent:"haven't",hasnt:"hasn't",aint:"ain't",youre:"you're",theyre:"they're",thats:"that's",whats:"what's",theres:"there's",heres:"here's",ive:"I've",ill:null,im:null};
+function caseLike(src,out){
+  if(src.length>1 && src===src.toUpperCase()) return out.toUpperCase();
+  if(src.charAt(0)!==src.charAt(0).toLowerCase()) return out.charAt(0).toUpperCase()+out.slice(1);
+  return out;
+}
+function fixToken(t){
+  var low=t.toLowerCase(), r;
+  if(low==='i') return 'I';
+  if(low.charAt(0)==='i'&&low.charAt(1)==="'"){ return 'I'+t.slice(1).toLowerCase(); }
+  if(CONTR.hasOwnProperty(low)&&CONTR[low]){ return caseLike(t,CONTR[low]); }
+  if(DICT.hasOwnProperty(low)) return caseLike(t,DICT[low]);
+  return t;
+}
+var TOK=/[A-Za-z]+(?:'[A-Za-z]+)?/g;
+function fixWords(s){ return s.replace(TOK,fixToken); }
+function fixLine(s,first){
+  if(!s) return s;
+  s=demoji(String(s)); s=ents(s);
+  s=s.replace(/[\u200B-\u200D\uFEFF\u00AD]/g,'').replace(/\u00A0/g,' ');
+  s=s.replace(/[\u2018\u2019\u02BC`´]/g,"'").replace(/[\u201C\u201D]/g,'"').replace(/\u2026/g,'...');
+  s=s.replace(/<br\s*\/?>/gi,' ').replace(/<[^>]{1,20}>/g,'');
+  s=s.replace(/[ \t]{2,}/g,' ');
+  s=s.replace(/\s+([,.!?;:])/g,'$1').replace(/([,;:!?])(?=[A-Za-z])/g,'$1 ').replace(/([!?]){3,}/g,'$1$1').replace(/\.{4,}/g,'...');
+  s=s.trim();
+  var letters=s.replace(/[^A-Za-z]/g,'');
+  if(letters.length>=5 && letters===letters.toUpperCase() && !/[\u0900-\u0D7F]/.test(s)) s=s.toLowerCase();
+  s=fixWords(s);
+  if(first!==false && /^[a-z]/.test(s)) s=s.charAt(0).toUpperCase()+s.slice(1);
+  return s;
+}
+function fixFragment(s){ if(!s) return s; s=demoji(String(s)); s=ents(s); s=s.replace(/[\u2018\u2019\u02BC`´]/g,"'"); return fixWords(s); }
+window.bosFixLyrics=function(data){
+  try{
+    if(!data||!data.lines) return data;
+    var copy=Object.assign({},data);
+    copy.lines=data.lines.map(function(l,idx){
+      if(!l) return l;
+      var c=Object.assign({},l);
+      c.text=fixLine(l.text);
+      if(l.words&&l.words.length){
+        c.words=l.words.map(function(w,wi){
+          var t=fixFragment(w.text);
+          if(wi===0&&/^[a-z]/.test(t||'')) t=t.charAt(0).toUpperCase()+t.slice(1);
+          return Object.assign({},w,{text:t});
+        });
+        if(l._wt) c._wt=l._wt;
+      }
+      return c;
+    });
+    return copy;
+  }catch(e){ return data; }
+};
+window.__bosLyricFix={fixLine:fixLine,demoji:demoji};
+})();
+</script>
 </body>
 </html>
