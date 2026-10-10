@@ -698,6 +698,8 @@ body{overscroll-behavior-y:none;}
     </div>
     <div data-nav="home" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg><span class="nlabel">Home</span></div>
     <div data-nav="search" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg><span class="nlabel">Search</span></div>
+    <div data-nav="charts" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-8M22 20H2"/></svg><span class="nlabel">Top Charts</span></div>
+    <div data-nav="toplists" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h10M4 18h10"/><circle cx="19" cy="18" r="2"/></svg><span class="nlabel">Top Playlists</span></div>
     <div class="nav-group-label">Browse</div>
     <div data-nav="lib-songs" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg><span class="nlabel">Songs</span></div>
     <div data-nav="lib-albums" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="2.5"/></svg><span class="nlabel">Albums</span></div>
@@ -738,6 +740,8 @@ body{overscroll-behavior-y:none;}
       <div class="view" id="view-artist"></div>
       <div class="view" id="view-playlist"></div>
       <div class="view" id="view-settings"></div>
+      <div class="view" id="view-charts"></div>
+      <div class="view" id="view-toplists"></div>
     </div>
   </div>
 </div>
@@ -828,6 +832,7 @@ body{overscroll-behavior-y:none;}
 <nav id="bottom-nav" class="glass-3">
   <div class="bn-item" data-nav="home"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg><span>Home</span></div>
   <div class="bn-item" data-nav="search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg><span>Search</span></div>
+  <div class="bn-item" data-nav="charts"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-8M22 20H2"/></svg><span>Charts</span></div>
   <div class="bn-item" data-nav="library"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="18" rx="1"/><rect x="13" y="3" width="8" height="10" rx="1"/><rect x="13" y="16" width="8" height="5" rx="1"/></svg><span>Library</span></div>
   <div class="bn-item" data-nav="favorites"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z"/></svg><span>Favorites</span></div>
   <div class="bn-item" data-nav="settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9c.29-.6.24-1.31-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06c.51.51 1.22.62 1.82.33.5-.24.9-.68 1-1.24V3a2 2 0 1 1 4 0v.09c.1.56.5 1 1 1.24.6.29 1.31.18 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06c-.51.51-.62 1.22-.33 1.82.24.5.68.9 1.24 1H21a2 2 0 1 1 0 4h-.09c-.56.1-1 .5-1.24 1z"/></svg><span>Settings</span></div>
@@ -2523,7 +2528,7 @@ function errorStateHTML(msg, retryFnStr){ return '<div class="error-state"><div 
 function backIcon(){ return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>'; }
 
 /* ============================================================ NAVIGATION — SPA / HISTORY API ============================================================ */
-const NAV_TITLES={home:"Home",search:"Search",library:"Library",favorites:"Favorites",recent:"Recently Played",album:"Album",artist:"Artist",playlist:"Playlist",settings:"Settings","lib-songs":"Songs","lib-albums":"Albums","lib-artists":"Artists","lib-playlists":"Playlists",queue:"Queue",player:"Now Playing",lyrics:"Lyrics"};
+const NAV_TITLES={home:"Home",search:"Search",library:"Library",favorites:"Favorites",recent:"Recently Played",album:"Album",artist:"Artist",playlist:"Playlist",settings:"Settings",charts:"Top Charts",toplists:"Top Playlists","lib-songs":"Songs","lib-albums":"Albums","lib-artists":"Artists","lib-playlists":"Playlists",queue:"Queue",player:"Now Playing",lyrics:"Lyrics"};
 function navHash(view,params){params=params||{};if(view==="home")return "#home";if(view==="search")return "#search"+(State.searchQuery?"?q="+encodeURIComponent(State.searchQuery):"");if(["album","artist","playlist"].includes(view))return "#"+view+"/"+encodeURIComponent(params.id||"");return "#"+view;}
 function navState(view,params,depth,scrollTop){return {boosterOS:true,view:view,params:params||{},depth:Math.max(0,Number(depth)||0),scrollTop:Number(scrollTop)||0};}
 var __inVT=false;
@@ -2551,7 +2556,7 @@ function __navCore(view,params,opts){
   const apply=()=>{
     State.viewParams=params;
     $$(".view").forEach(v=>v.classList.remove("active"));
-    const map={home:"view-home",search:"view-search",library:"view-library",favorites:"view-library",recent:"view-library",album:"view-album",artist:"view-artist",playlist:"view-playlist",settings:"view-settings"};
+    const map={home:"view-home",search:"view-search",library:"view-library",favorites:"view-library",recent:"view-library",album:"view-album",artist:"view-artist",playlist:"view-playlist",settings:"view-settings",charts:"view-charts",toplists:"view-toplists"};
     const target=map[view]||"view-home";
     $("#"+target).classList.add("active");State.view=view;
     $("#page-title").textContent=NAV_TITLES[view]||"Booster OS";
@@ -2569,6 +2574,8 @@ function __navCore(view,params,opts){
     if(view==="home"){if(!$("#view-home").querySelector(".section")||Date.now()-State._homeLoadedAt>120000)renderHome();}
     else if(view==="search"){ if(!(same && $("#search-input"))) renderSearchView(); }
     else if(view==="library")renderLibrary();
+    else if(view==="charts")renderCharts();
+    else if(view==="toplists")renderToplists();
     else if(view==="favorites"){State.libTab="favorites";renderLibrary();$("#page-title").textContent="Favorites";}
     else if(view==="recent"){State.libTab="recent";renderLibrary();$("#page-title").textContent="Recently Played";}
     else if(view==="album")renderAlbumDetail(params.id);
@@ -5305,6 +5312,79 @@ function bosRomanizeLyrics(data){
   }catch(e){ return data; }
 }
 
+
+/* ---- Top Charts + Top Playlists (inside app scope) ---- */
+(function(){
+var CH={list:null,at:0,busy:false,busyAt:0},TL={html:null,at:0,busy:false,busyAt:0};
+var QS=["Top 50 India","Top Hindi Songs","Trending Bollywood","Top Punjabi Songs","Arijit Singh hits","Latest Hindi Songs"];
+var POOL=["Top 50 India","Top Hindi Songs","Trending Bollywood","Top Punjabi Songs","Arijit Singh hits","Latest Hindi Songs","Bollywood romantic hits","Hindi party songs","Badshah hits","Neha Kakkar hits","Diljit Dosanjh hits","Atif Aslam hits","Shreya Ghoshal hits","Jubin Nautiyal hits","AP Dhillon hits","Karan Aujla hits","Sonu Nigam hits","Hindi sad songs","Bollywood dance hits","Indian pop hits","90s Bollywood hits","2025 Hindi songs","2026 Hindi songs","Anirudh Hindi hits"];
+var PLQ=[["🔥 Top India","Top 50 India"],["📈 Trending Now","Trending India"],["🎬 Bollywood Hits","Bollywood Hits"],["🥁 Punjabi Beats","Punjabi Hits"],["💞 Romantic","Romantic Hindi"],["🎉 Party","Hindi Party"],["🌙 Chill & Lofi","Hindi Lofi"],["📻 Retro Classics","Old Hindi Songs"],["💪 Workout","Workout Hindi"]];
+function key(t){try{return (SmartRadio.familyKey(t)||"")||String(t.id)}catch(e){return String(t.id)}}
+function clearCache(re){try{Array.from(cache.keys()).forEach(function(k){if(re.test(k))cache.delete(k)})}catch(e){}}
+async function fetchTop150(rand){
+  var qs=rand?shuffleArray(POOL).slice(0,7):QS,pg=rand?shuffleArray([0,1,2,3]).slice(0,2):[0,1];
+  var jobs=[];qs.forEach(function(q){pg.forEach(function(p){jobs.push(Api.searchSongs(q,p,40).then(function(r){return (r.data&&r.data.results)||[]}).catch(function(){return[]}))})});
+  var packs=await Promise.all(jobs),seen=new Set(),out=[],i=0,more=true;
+  while(out.length<150&&more){more=false;packs.forEach(function(pk){var t=pk[i];if(t){more=true;t=normalizeSong(t);if(!t)return;var k=key(t);if(seen.has(k)||seen.has(String(t.id)))return;seen.add(k);seen.add(String(t.id));if(out.length<150)out.push(t)}});i++}
+  return out;
+}
+function plSection(title,pls){
+  return '<div class="section"><div class="section-head"><div><div class="section-title">'+esc(title)+'</div></div></div><div class="hscroll">'+
+    pls.map(function(p){return '<div class="ch-pl">'+playlistCard(p)+'<button class="btn btn-primary ch-pp" data-cact="play-pl" data-id="'+esc(p.id)+'">'+svgPlay()+' Play All</button></div>'}).join('')+'</div></div>';
+}
+function tm(t){return new Date(t).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'})}
+window.renderCharts=async function(force){
+  var el=document.getElementById('view-charts');
+  if(force===true){CH.busy=false;CH.list=null;clearCache(/^search-songs:/);try{toast('Charts refresh ho rahe hain…')}catch(e){}}
+  if(CH.busy&&Date.now()-CH.busyAt<30000)return;
+  if(CH.list&&Date.now()-CH.at<300000&&el.querySelector('.ch-hero'))return;
+  CH.busy=true;CH.busyAt=Date.now();
+  el.innerHTML='<div class="ch-hero glass-2"><div><h2>Top 150 India</h2><p>Loading latest songs…</p></div></div>';
+  try{
+    var list=await fetchTop150(force===true);CH.list=list;CH.at=Date.now();storeCtx('charts-top150',list);
+    var hero='<div class="ch-hero glass-2"><div><h2>Top 150 India</h2><p>'+list.length+' songs • Updated '+tm(CH.at)+'</p><div class="ch-acts"><button class="btn btn-primary" data-action="play-all" data-ctx="charts-top150">'+svgPlay()+' Play All</button><button class="btn btn-ghost" data-cact="shuffle">Shuffle</button><button class="btn btn-ghost" data-cact="refresh">Refresh</button><button class="btn btn-ghost" data-cact="go-pl">Top Playlists</button></div></div></div>';
+    var body=list.length?'<div class="row-list">'+list.map(function(t,i){return songRow(t,i,{ctxKey:'charts-top150'})}).join('')+'</div>':'<div class="ch-msg">Songs load nahi hue. Internet check karo aur Refresh dabao.</div>';
+    el.innerHTML=hero+body;
+  }catch(e){console.warn(e);el.innerHTML='<div class="ch-msg">Charts load nahi hue. Dobara try karo.</div>';CH.list=null}
+  CH.busy=false;
+  if(force===true){try{toast('Charts update ho gaye')}catch(e){}}
+};
+window.renderToplists=async function(force){
+  var el=document.getElementById('view-toplists');
+  if(force===true){TL.busy=false;TL.html=null;clearCache(/^search-playlists:/);try{toast('Playlists refresh ho rahi hain…')}catch(e){}}
+  if(TL.busy&&Date.now()-TL.busyAt<30000)return;
+  if(TL.html&&Date.now()-TL.at<300000&&el.querySelector('.ch-hero'))return;
+  TL.busy=true;TL.busyAt=Date.now();
+  el.innerHTML='<div class="ch-hero glass-2"><div><h2>Top Playlists</h2><p>Loading playlists…</p></div></div>';
+  try{
+    var res=await Promise.all(PLQ.map(function(x){return Api.searchPlaylists(x[1],force===true?Math.floor(Math.random()*2):0,8).then(function(r){return (r.data.results||[]).map(normalizePlaylist).filter(Boolean)}).catch(function(){return[]})}));
+    var html='';res.forEach(function(r,i){if(r.length)html+=plSection(PLQ[i][0],r)});
+    TL.at=Date.now();TL.html=html||'x';
+    var hero='<div class="ch-hero glass-2"><div><h2>Playlists for every mood</h2><p>Top charts ki playlists • Updated '+tm(TL.at)+'</p><div class="ch-acts"><button class="btn btn-ghost" data-cact="refresh-pl">Refresh</button><button class="btn btn-ghost" data-cact="go-ch">Top Charts</button></div></div></div>';
+    el.innerHTML=hero+(html||'<div class="ch-msg">Playlists nahi mili. Refresh dabao.</div>');
+  }catch(e){console.warn(e);el.innerHTML='<div class="ch-msg">Playlists load nahi hui. Dobara try karo.</div>';TL.html=null}
+  TL.busy=false;
+  if(force===true){try{toast('Playlists update ho gayi')}catch(e){}}
+};
+async function onClick(e){
+  var b=e.target.closest('[data-cact]');if(!b)return;e.stopPropagation();
+  var a=b.dataset.cact;
+  if(a==='refresh'){window.renderCharts(true);return}
+  if(a==='refresh-pl'){window.renderToplists(true);return}
+  if(a==='go-pl'){navigate('toplists');return}
+  if(a==='go-ch'){navigate('charts');return}
+  if(a==='shuffle'&&CH.list&&CH.list.length){var l=shuffleArray(CH.list.slice());storeCtx('charts-shuffle',l);var f=await resolvePlayableTrack(l[0]);if(f)Player.play(f,l,0,{autoTransition:false});return}
+  if(a==='play-pl'){
+    try{b.disabled=true;var r=await Api.getPlaylist(b.dataset.id,null,0,100);var pl=normalizePlaylist(r.data),songs=(pl&&pl.songs)||[];
+      if(!songs.length){toast('Playlist khali hai');return}
+      storeCtx('charts-pl-'+b.dataset.id,songs);var f2=await resolvePlayableTrack(songs[0]);if(f2)Player.play(f2,songs,0,{autoTransition:false});
+    }catch(err){toast('Playlist play nahi hui')}finally{b.disabled=false}
+  }
+}
+document.getElementById('view-charts').addEventListener('click',onClick);
+document.getElementById('view-toplists').addEventListener('click',onClick);
+setInterval(function(){if(State.view==='charts'&&CH.list&&!CH.busy&&Date.now()-CH.at>300000)window.renderCharts(true);if(State.view==='toplists'&&TL.html&&!TL.busy&&Date.now()-TL.at>300000)window.renderToplists(true)},60000);
+})();
 })();
 </script>
 
@@ -8244,5 +8324,16 @@ window.bosFixLyrics=function(data){
 window.__bosLyricFix={fixLine:fixLine,demoji:demoji};
 })();
 </script>
+
+<style id="bos-charts-css">
+#view-charts .ch-hero,#view-toplists .ch-hero{display:flex;gap:18px;align-items:center;flex-wrap:wrap;padding:22px;border-radius:var(--r-xl);margin-bottom:26px;background:linear-gradient(135deg,rgba(var(--accent-r),var(--accent-g),var(--accent-b),.35),rgba(255,140,40,.18));border:1px solid var(--glass-2-brd)}
+#view-charts .ch-hero h2,#view-toplists .ch-hero h2{font-size:clamp(24px,5vw,38px);font-weight:800;letter-spacing:-.03em}
+#view-charts .ch-hero p,#view-toplists .ch-hero p{color:var(--text-2);font-size:13.5px;margin-top:4px}
+#view-charts .ch-acts,#view-toplists .ch-acts{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+#view-charts .ch-pl,#view-toplists .ch-pl{flex:none;width:156px}
+#view-charts .ch-pl .card,#view-toplists .ch-pl .card{width:100%}
+#view-charts .ch-pp,#view-toplists .ch-pp{margin:8px 4px 0;padding:7px 14px;font-size:12px}
+#view-charts .ch-msg,#view-toplists .ch-msg{color:var(--text-2);padding:24px 4px;font-size:14px}
+</style>
 </body>
 </html>
