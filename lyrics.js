@@ -860,6 +860,78 @@ Loanवर जिंदगी, भाड्याची कार भाई
 [03:00.00] Kadhi thambavat nahi hood madhi dude wale pora
 [03:03.00] Majhe mastan rastyavar bastana aamhi
 [03:05.00] Pahilyapasun hakkane hood wale
+`},
+     {
+    title: "Zingaat",
+    artist: "Sairat",
+    lrc: `
+   [00:07.37]Enough with you, my baby
+[00:09.19]I'm crazy and I want you to stay
+[00:13.57]Don't leave me ever
+[00:14.67]
+[00:14.74]Enough with you, my baby
+[00:16.51]I'm crazy and I want you to stay
+[00:20.59]Don't leave me ever
+[00:22.12]
+[00:29.13]He uraat hotay dhad dhad laali gaalaavar aali
+[00:33.20]An angaat bharlay vaara hi preetichi baadha jhaali
+[00:40.72]Ara uraat hotay dhad dhad laali gaalaavar aali
+[00:44.16]An angaat bharlay vaara hi preetichi baadha jhaali
+[00:47.72]
+[00:47.88]Aata adhir jhaaloya, bagh badhir jhaaloya
+[00:51.50]An tujhyachsaathi banun majnu maga aaloya
+[00:55.21]An udtoya bungaat, paltoya chingaat rangaat aaloya
+[00:58.73]
+[00:58.88]Jhaala zing, zing, zing, zing, zingaat
+[01:01.07]Zing, zing, zing, zing, zingaat
+[01:02.89]Zing, zing, zing, zing, zingaat
+[01:04.77]Zing, zing, zing
+[01:05.92]
+[01:06.13]Jhaala zing, zing, zing, zing, zingaat
+[01:08.44]Zing, zing, zing, zing, zingaat
+[01:10.25]Zing, zing, zing, zing, zingaat
+[01:11.92]Zing, zing, zing
+[01:13.34]
+[01:32.08]Aata utaavil jhaalo gudgha baashing baandhal
+[01:35.73]Tujhya naavaach mi initial tattoo na gondala aaha
+[01:43.42]Aata utaavil jhaalo gudgha baashing baandhal
+[01:46.76]Tujhya naavaach mi initial tattoo na gondala
+[01:50.62]Haat bharun aaloya
+[01:54.26]Haat bharun aaloya, lai durun aaloya
+[01:57.77]
+[01:57.98]An karun dadhi bhaari perfume maarun aaloya
+[02:01.65]Aga samdya poraat mya lai joraat rangaat aaloya
+[02:05.17]
+[02:05.34]Jhaala zing, zing, zing, zing, zingaat
+[02:07.50]Zing, zing, zing, zing, zingaat
+[02:09.33]Zing, zing, zing, zing, zingaat
+[02:11.20]Zing, zing, zing
+[02:12.51]
+[02:12.70]Jhaala zing, zing, zing, zing, zingaat
+[02:14.87]Zing, zing, zing, zing, zingaat
+[02:16.73]Zing, zing, zing, zing, zingaat
+[02:18.65]Zing, zing, zing
+[02:19.72]
+[02:38.56]Samdya gaavaala jhaaliya maajhya laganaachi ghaai
+[02:42.34]Kadhi honaar tu raani maajhya lekraachi aai
+[02:49.75]Samdya gaavaala jhaaliya maajhya laganaachi ghaai
+[02:53.25]Kadhi honar tu raani maajhya lekraachi aai
+[02:56.89]
+[02:57.05]Aata taraat jhaaluya
+[03:00.70]Aata taraat jhaaluya, tujhya gharaat aaluya
+[03:04.33]Lai phirun baandhaavarun kalti maarun aaloya
+[03:07.96]Aaga dhinchyaak joraat techno varaat daaraat aaloya
+[03:11.52]
+[03:11.72]Jhaala zing, zing, zing, zing, zingaat
+[03:13.92]Zing, zing, zing, zing, zingaat
+[03:15.76]Zing, zing, zing, zing, zingaat
+[03:17.55]Zing, zing, zing, zing
+[03:18.82]
+[03:19.10]Jhaala zing, zing, zing, zing, zingaat
+[03:21.27]Zing, zing, zing, zing, zingaat
+[03:23.08]Zing, zing, zing, zing, zingaat
+[03:25.11]Zing, zing, zing, zing
+[03:26.34]
 `}
 
 ];
