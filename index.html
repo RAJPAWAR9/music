@@ -1012,7 +1012,7 @@ function normalizeSongFromCompact(raw){
 const Piped=(function(){
   const LIST_URL="https://raw.githubusercontent.com/TeamPiped/documentation/main/content/docs/public-instances/index.md";
   const FALLBACK=["https://pipedapi.kavin.rocks","https://pipedapi.leptons.xyz","https://pipedapi.nosebs.ru","https://pipedapi.adminforge.de","https://api.piped.private.coffee"];
-  const LIST_TTL=6*3600e3, URL_TTL=4*3600e3, MAX_TRIES=6, TIMEOUT=7000;
+  const LIST_TTL=6*3600e3, URL_TTL=4*3600e3, MAX_TRIES=12, PARALLEL=4, TIMEOUT=8000;
   let list=null, loading=null;
   function abortErr(){ const e=new Error("aborted"); e.type="aborted"; e.name="AbortError"; return e; }
   function load(){
@@ -1041,24 +1041,32 @@ const Piped=(function(){
     })();
     return loading;
   }
-  /* try instances one by one; `accept(json)` returns a truthy value to accept a response, falsy to try the next instance */
+  /* try instances in parallel batches of PARALLEL; the first accepted response wins and the rest are cancelled.
+     `accept(json)` returns a truthy value to accept a response, falsy to treat it as a failure */
   async function call(path,signal,accept){
-    const all=await load(); let lastErr=null;
-    for(let i=0;i<all.length&&i<MAX_TRIES;i++){
+    const all=await load(), pool=all.slice(0,MAX_TRIES); let lastErr=null;
+    for(let off=0;off<pool.length;off+=PARALLEL){
       if(signal&&signal.aborted) throw abortErr();
-      const base=all[i], ctl=new AbortController();
-      const onAbort=function(){ try{ctl.abort();}catch(e){} };
-      if(signal) signal.addEventListener("abort",onAbort,{once:true});
-      const timer=setTimeout(onAbort,TIMEOUT);
+      const batch=pool.slice(off,off+PARALLEL), ctls=[];
+      const cancelAll=function(){ ctls.forEach(function(c){ try{c.abort();}catch(e){} }); };
+      if(signal) signal.addEventListener("abort",cancelAll,{once:true});
       try{
-        const r=await fetch(base+path,{signal:ctl.signal});
-        if(!r.ok) throw new Error("HTTP "+r.status);
-        const j=await r.json();
-        if(j&&j.error) throw new Error(String(j.message||j.error));
-        const ok=accept?accept(j):j;
-        if(ok){ if(i>0){ all.splice(i,1); all.unshift(base); } return ok; }
+        const hit=await new Promise(function(resolve,reject){
+          let left=batch.length;
+          batch.forEach(function(base){
+            const ctl=new AbortController(); ctls.push(ctl);
+            const timer=setTimeout(function(){ try{ctl.abort();}catch(e){} },TIMEOUT);
+            fetch(base+path,{signal:ctl.signal})
+              .then(function(r){ if(!r.ok) throw new Error("HTTP "+r.status); return r.json(); })
+              .then(function(j){ if(j&&j.error) throw new Error(String(j.message||j.error)); const ok=accept?accept(j):j; if(!ok) throw new Error("No usable data"); return {ok:ok,base:base}; })
+              .then(function(h){ clearTimeout(timer); resolve(h); },function(e){ clearTimeout(timer); lastErr=e; if(--left===0) reject(e); });
+          });
+        });
+        cancelAll();
+        const k=all.indexOf(hit.base); if(k>0){ all.splice(k,1); all.unshift(hit.base); }
+        return hit.ok;
       }catch(e){ if(signal&&signal.aborted) throw abortErr(); lastErr=e; }
-      finally{ clearTimeout(timer); if(signal) signal.removeEventListener("abort",onAbort); }
+      finally{ if(signal) signal.removeEventListener("abort",cancelAll); }
     }
     throw lastErr||new Error("All Piped instances failed.");
   }
@@ -1067,7 +1075,7 @@ const Piped=(function(){
     return { id:"yt_"+m[1], _ytId:m[1], _piped:true, _needsFetch:true,
       name:String(it.title||"Untitled").replace(/&quot;/g,'"').replace(/&amp;/g,"&"),
       artistName:String(it.uploaderName||"Unknown Artist").replace(/\s*-\s*Topic$/i,""),
-      duration:Number(it.duration)||0, year:"", language:"", image:(it.thumbnail||FALLBACK_ART).replace(/^http:/,"https:"),
+      duration:Number(it.duration)||0, year:"", language:"", image:"https://i.ytimg.com/vi/"+m[1]+"/mqdefault.jpg",
       albumName:"", albumId:null, artistId:null, downloadUrl:{}, hasLyrics:false };
   }
   async function search(q,signal){
