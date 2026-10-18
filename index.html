@@ -1185,14 +1185,14 @@ const YTV=(function(){
   }
   function place(){
     if(!host) return;
-    const fp=document.getElementById("full-player"), full=!!(fp&&fp.classList.contains("open"));
+    const fp=document.getElementById("full-player"), full=!!(fp&&fp.classList.contains("open")), hideIt=!!(typeof State!=="undefined"&&State.lyricsOpen&&!blocked);
     let t=null,r=null,z=41;
     if(full){ const a=document.getElementById("fp-art"); t=a&&a.parentElement; r=t&&t.getBoundingClientRect(); z=81; }
     if(!r||r.width<2){ t=document.getElementById("mini-art-wrap"); r=t&&t.getBoundingClientRect(); z=41; }
     if(!r||r.width<2){ if(!lastKey){ const s0=host.style; s0.left="16px"; s0.top="16px"; s0.width="52px"; s0.height="52px"; s0.display="block"; } return; }
-    const key=[r.left,r.top,r.width,r.height,z].map(function(n){ return Math.round(n*10)/10; }).join(",");
+    const key=[r.left,r.top,r.width,r.height,z,hideIt?1:0].map(function(n){ return Math.round(n*10)/10; }).join(",");
     if(key===lastKey) return; lastKey=key;
-    const s=host.style; s.left=r.left+"px"; s.top=r.top+"px"; s.width=r.width+"px"; s.height=r.height+"px"; s.zIndex=String(z); s.opacity="1"; s.display="block";
+    const s=host.style; s.left=r.left+"px"; s.top=r.top+"px"; s.width=r.width+"px"; s.height=r.height+"px"; s.zIndex=hideIt?"1":String(z); s.opacity=hideIt?"0":"1"; s.display="block";
     s.borderRadius=getComputedStyle(t).borderRadius||"0";
     const fr=host.querySelector("iframe");
     if(fr){ fr.style.width=Math.max(r.width,r.height*16/9)+"px"; fr.style.height=Math.max(r.height,r.width*9/16)+"px"; }
@@ -1220,7 +1220,7 @@ const YTV=(function(){
     const el=owner, v=vol; owner=null;
     PROPS.forEach(function(k){ try{ delete el[k]; }catch(e){} });
     try{ delete el.play; delete el.pause; }catch(e){}
-    try{ el.volume=v; }catch(e){}
+    try{ el.muted=false; el.volume=(typeof State!=="undefined"&&Number.isFinite(State.volume)&&State.volume>0)?State.volume:(v>0?v:1); }catch(e){}
     try{ if(ready) player.stopVideo(); }catch(e){}
     clearInterval(tick); tick=0; isPlay=false; wantPlay=false; state=-1; setTappable(false);
     if(host) host.style.display="none";
@@ -3648,6 +3648,7 @@ function init(){
   const originalLoadAndPlay = loadAndPlay;
   loadAndPlay = async function(el, track, startAt){
       if(track && track._yt) return originalLoadAndPlay.apply(this, arguments);
+    try{ YTV.detach(); }catch(_){}
     const urls=[];
     const preferred=bestAudioUrl(track);
     if(preferred) urls.push(preferred);
