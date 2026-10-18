@@ -1103,7 +1103,39 @@ const Piped=(function(){
     if(!t.duration&&pick.d) t.duration=Number(pick.d)||0;
     return t;
   }
-  return { load:load, search:search, resolve:resolve, needsResolve:needsResolve };
+  /* ---- music search by type (songs / albums / artists / playlists / videos), paging, and detail pages ---- */
+  function clean(x){ return String(x||"").replace(/&quot;/g,'"').replace(/&amp;/g,"&").replace(/&#39;/g,"'"); }
+  function idFromPl(u){ const m=/[?&]list=([\w-]+)/.exec(u||""); return m?m[1]:null; }
+  function idFromCh(u){ const m=/\/channel\/([\w-]+)/.exec(u||""); return m?m[1]:null; }
+  async function page(q,filter,signal,next){
+    const path=next?("/nextpage/search?nextpage="+encodeURIComponent(next)+"&q="+encodeURIComponent(q)+"&filter="+filter):("/search?q="+encodeURIComponent(q)+"&filter="+filter);
+    const j=await call(path,signal,function(j){ return j&&Array.isArray(j.items)?j:null; });
+    return { items:j.items||[], next:j.nextpage||null };
+  }
+  function mapItems(items,kind){
+    return (items||[]).map(function(it){
+      if(!it) return null;
+      if(kind==="songs"||kind==="videos") return (!it.type||it.type==="stream")?toTrack(it):null;
+      if(kind==="albums"||kind==="playlists"){
+        const id=idFromPl(it.url); if(!id) return null;
+        return { id:"pp:"+id, name:clean(it.name||it.title||"Untitled"), image:it.thumbnail||"", artistName:clean(String(it.uploaderName||"").replace(/\s*-\s*Topic$/i,"")), year:"", songCount:Number(it.videos)||0 };
+      }
+      if(kind==="artists"){
+        const id=idFromCh(it.url); if(!id) return null;
+        return { id:"pp:"+id, name:clean(String(it.name||it.title||"Unknown").replace(/\s*-\s*Topic$/i,"")), image:it.thumbnail||"" };
+      }
+      return null;
+    }).filter(Boolean);
+  }
+  async function playlist(id,signal){
+    const j=await call("/playlists/"+encodeURIComponent(id),signal,function(j){ return j&&(Array.isArray(j.relatedStreams)||j.name)?j:null; });
+    return { name:clean(j.name||"Playlist"), image:j.thumbnailUrl||"", uploader:clean(String(j.uploader||"").replace(/\s*-\s*Topic$/i,"")), tracks:(j.relatedStreams||[]).map(toTrack).filter(Boolean), count:Number(j.videos)||0 };
+  }
+  async function channel(id,signal){
+    const j=await call("/channel/"+encodeURIComponent(id),signal,function(j){ return j&&(j.name||Array.isArray(j.relatedStreams))?j:null; });
+    return { name:clean(String(j.name||"Artist").replace(/\s*-\s*Topic$/i,"")), image:j.avatarUrl||"", subs:Number(j.subscriberCount)||0, desc:String(j.description||""), tracks:(j.relatedStreams||[]).map(toTrack).filter(Boolean) };
+  }
+  return { load:load, search:search, resolve:resolve, needsResolve:needsResolve, page:page, mapItems:mapItems, playlist:playlist, channel:channel };
 })();
 
 /* ============================================================ YOUTUBE VIDEO ENGINE (official IFrame Player API) ============================================================
@@ -1273,7 +1305,7 @@ const State = {
     miniPlayerEnabled:true, dynamicPlayerBg:true, animatedArtwork:true, rememberPlayerState:true
   }, Store.get("settings", {})),
   currentTrack: null, isPlaying: false, lyricsData: null, lyricsOpen: false,
-  searchQuery: "", searchTab: "all", libTab: "favorites", _lastSavedPos:0,
+  searchQuery: "", searchTab: "all", searchSrc: Store.get("searchSrc","saavn"), pipedTab: Store.get("pipedTab","songs"), libTab: "favorites", _lastSavedPos:0,
   smartQueueSeed: "", smartQueueBusy:false, smartSessionId: Date.now(),
   smartRadioActive:false, smartRadioRefillToken:0,
   _nextInFlight:false, _crossfadeTrackId:null, _crossfadeTriggered:false,
@@ -2830,9 +2862,9 @@ function __navCore(view,params,opts){
     else if(view==="toplists")renderToplists();
     else if(view==="favorites"){State.libTab="favorites";renderLibrary();$("#page-title").textContent="Favorites";}
     else if(view==="recent"){State.libTab="recent";renderLibrary();$("#page-title").textContent="Recently Played";}
-    else if(view==="album")renderAlbumDetail(params.id);
-    else if(view==="artist")renderArtistDetail(params.id);
-    else if(view==="playlist")renderPlaylistDetail(params.id);
+    else if(view==="album"){ if(ppId(params.id))ppDetail("album",params.id); else renderAlbumDetail(params.id); }
+    else if(view==="artist"){ if(ppId(params.id))ppDetail("artist",params.id); else renderArtistDetail(params.id); }
+    else if(view==="playlist"){ if(ppId(params.id))ppDetail("playlist",params.id); else renderPlaylistDetail(params.id); }
     else if(view==="settings")renderSettings();
     if(scrollEl){scrollEl.classList.remove("nav-leave");scrollEl.classList.remove("nav-enter");void scrollEl.offsetWidth;scrollEl.classList.add("nav-enter");}
   };
@@ -2887,12 +2919,52 @@ function fillSection(id,items,cardFn){
 function hideSection(id){const s=$("#sec-"+id);if(s)s.style.display="none";}
 async function safeLoad(fetcher,onSuccess,onFail){try{const r=await fetcher();if(r&&r.type==="aborted")return;onSuccess(r);}catch(e){if(e&&e.type==="aborted")return;console.warn(e);if(onFail)onFail(e);}}
 /* ============================================================ RENDER: SEARCH ============================================================ */
+/* ============================================================ SEARCH: JioSaavn and Piped are separate worlds, each with its own Songs / Albums / Artists / Playlists ============================================================ */
+(function(){var st=document.createElement("style");st.textContent="#search-src{margin-bottom:8px}.ssrc{border:1px solid var(--glass-2-brd)}.ssrc.active{border-color:transparent}";document.head.appendChild(st);})();
+function searchTabsHTML(){
+  const src=State.searchSrc==="piped"?"piped":"saavn";
+  const tabs=src==="piped"?["songs","albums","artists","playlists","videos"]:["all","songs","albums","artists","playlists"];
+  const cur=src==="piped"?State.pipedTab:State.searchTab;
+  const lab={all:"All",songs:"Songs",albums:"Albums",artists:"Artists",playlists:"Playlists",videos:"Videos"};
+  return '<div class="search-tabs" id="search-src">'+[["saavn","JioSaavn"],["piped","Piped"]].map(x=>'<button class="stab ssrc'+(src===x[0]?" active":"")+'" data-src="'+x[0]+'">'+x[1]+'</button>').join("")+'</div>'
+    +'<div class="search-tabs" id="search-tabs">'+tabs.map(tb=>'<button class="stab'+(cur===tb?" active":"")+'" data-tab="'+tb+'">'+lab[tb]+'</button>').join("")+'</div>';
+}
+const PP_FILTER={songs:"music_songs",albums:"music_albums",artists:"music_artists",playlists:"music_playlists",videos:"videos"};
+async function ppSearch(res,q,ctl,seq){
+  const tab=State.pipedTab||"songs";
+  let pg=await Piped.page(q,PP_FILTER[tab]||"music_songs",ctl.signal);
+  if(ctl.signal.aborted||seq!==State._searchSeq)return;
+  let list=Piped.mapItems(pg.items,tab);
+  if(!list.length&&tab==="songs"){ pg=await Piped.page(q,"videos",ctl.signal); if(ctl.signal.aborted||seq!==State._searchSeq)return; list=Piped.mapItems(pg.items,"songs"); }
+  if(!list.length)return renderNoResults(res);
+  State._pp={q:q,tab:tab,next:pg.next,list:list,seen:new Set(list.map(x=>x.id)),busy:false};
+  ppRender(res);
+}
+function ppRender(res){
+  const S=State._pp,tab=S.tab,list=S.list;let html;
+  if(tab==="songs"||tab==="videos"){const key="search-piped-"+tab;storeCtx(key,list);html='<div class="row-list">'+list.map((x,i)=>songRow(x,i,{ctxKey:key})).join("")+'</div>';}
+  else html='<div class="grid">'+list.map(tab==="albums"?albumCard:tab==="artists"?artistCard:playlistCard).join("")+'</div>';
+  if(S.next)html+='<div style="text-align:center;margin:18px 0"><button class="btn btn-ghost" id="pp-more">Load more</button></div>';
+  res.innerHTML=html;
+}
+document.addEventListener("click",async function(e){
+  const b=e.target.closest&&e.target.closest("#pp-more");if(!b)return;
+  const S=State._pp;if(!S||S.busy)return;S.busy=true;b.textContent="Loading…";
+  try{
+    const pg=await Piped.page(S.q,PP_FILTER[S.tab]||"music_songs",null,S.next);
+    if(State._pp!==S)return;
+    const more=Piped.mapItems(pg.items,S.tab).filter(x=>!S.seen.has(x.id));more.forEach(x=>S.seen.add(x.id));
+    S.list=S.list.concat(more);S.next=more.length?pg.next:null;
+    const res=$("#search-results");if(res)ppRender(res);
+  }catch(err){b.textContent="Load more";toast("Couldn't load more results.","error");}
+  finally{S.busy=false;}
+});
 function renderSearchView(){
   const el = $("#view-search");
   el.innerHTML = '<div class="search-bar glass-1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>'
     +'<input type="text" id="search-input" placeholder="Search songs, artists, albums, playlists…" value="'+esc(State.searchQuery)+'" autocomplete="off">'
     +'<button class="icon-btn" id="search-clear" style="'+(State.searchQuery?"":"display:none")+'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button></div>'
-    +'<div class="search-tabs" id="search-tabs">'+["all","songs","albums","artists","playlists","piped"].map(tb=>'<button class="stab'+(State.searchTab===tb?" active":"")+'" data-tab="'+tb+'">'+tb[0].toUpperCase()+tb.slice(1)+'</button>').join("")+'</div>'
+    +'<div id="search-tabwrap">'+searchTabsHTML()+'</div>'
     +'<div id="search-results"></div>';
   const input = $("#search-input");
   /* V22: auto-open the keyboard only on desktop and only for an empty search; on phones the user taps the bar */
@@ -2902,14 +2974,20 @@ function renderSearchView(){
   input.addEventListener("keydown", e=>{ if(e.key==="Enter"){ e.preventDefault(); State.searchQuery = input.value.trim(); $("#search-clear").style.display = State.searchQuery?"":"none"; runSearch(); input.blur(); } });
   $("#search-clear").addEventListener("click", ()=>{ input.value=""; State.searchQuery=""; $("#search-clear").style.display="none"; runSearch(); input.focus(); });
   /* tabs: update in place. No re-render, no focus, so the keyboard never pops up */
-  const tabsEl=$("#search-tabs");
+  const tabsEl=$("#search-tabwrap");
   tabsEl.addEventListener("pointerdown", e=>{ if(e.target.closest(".stab") && document.activeElement===input){ e.preventDefault(); } });
   tabsEl.addEventListener("click", e=>{
     const b=e.target.closest(".stab"); if(!b) return;
     if(document.activeElement===input) input.blur();
-    if(State.searchTab===b.dataset.tab) return;
-    State.searchTab=b.dataset.tab;
-    tabsEl.querySelectorAll(".stab").forEach(x=>x.classList.toggle("active",x===b));
+    if(b.dataset.src){
+      if(State.searchSrc===b.dataset.src) return;
+      State.searchSrc=b.dataset.src; Store.set("searchSrc",State.searchSrc);
+      tabsEl.innerHTML=searchTabsHTML();
+    }else if(b.dataset.tab){
+      if(State.searchSrc==="piped"){ if(State.pipedTab===b.dataset.tab) return; State.pipedTab=b.dataset.tab; Store.set("pipedTab",State.pipedTab); }
+      else{ if(State.searchTab===b.dataset.tab) return; State.searchTab=b.dataset.tab; }
+      tabsEl.querySelectorAll("#search-tabs .stab").forEach(x=>x.classList.toggle("active",x===b));
+    }else return;
     if(State.searchQuery) runSearch(); else renderSearchEmpty();
   });
   /* scrolling the results hides the keyboard */
@@ -2923,11 +3001,8 @@ async function runSearch(){
   if(State._searchAbort)try{State._searchAbort.abort();}catch(_){}
   const ctl=new AbortController();State._searchAbort=ctl;const seq=++State._searchSeq;res.innerHTML='<div class="row-list">'+skeletonRows(6)+'</div>';
   try{
-    if(State.searchTab==="piped"){
-      const list=await Piped.search(q,ctl.signal);if(ctl.signal.aborted||seq!==State._searchSeq)return;
-      if(!list.length)return renderNoResults(res);
-      storeCtx("search-piped",list);
-      res.innerHTML='<div class="row-list">'+list.map((s,i)=>songRow(s,i,{ctxKey:"search-piped"})).join("")+'</div>';
+    if(State.searchSrc==="piped"){
+      await ppSearch(res,q,ctl,seq);
     }else if(State.searchTab==="all"){
       const r=await Api.searchAll(q,ctl.signal);if(ctl.signal.aborted||seq!==State._searchSeq)return;const d=r.data||{},songs=(d.songs&&d.songs.results||[]).map(normalizeSongFromCompact),albums=(d.albums&&d.albums.results||[]).map(normalizeAlbumFromCompact),artists=(d.artists&&d.artists.results||[]).map(normalizeArtistFromCompact);let html="";
       if(songs.length){storeCtx("search-all",songs);html+='<div class="section-title" style="margin:6px 0 10px;">Songs</div><div class="row-list">'+songs.map((s,i)=>songRow(s,i,{ctxKey:"search-all"})).join("")+'</div>';}
@@ -3002,6 +3077,42 @@ async function renderPlaylistDetail(id){
   try{const r=await Api.getPlaylist(id,ctl.signal);if(ctl.signal.aborted||seq!==State._detailSeq||State.view!=="playlist"||String(State.viewParams.id)!==String(id))return;const pl=normalizePlaylist(r.data);if(!pl)throw {message:"Unable to load this playlist."};storeCtx("playlist-"+id,pl.songs||[]);const fav=Favorites.isPlaylistFav(pl.id);
     el.innerHTML='<button class="icon-btn mobile-only" data-action="back" style="margin-bottom:10px;">'+backIcon()+'</button><div class="detail-hero"><div class="detail-art"><img src="'+esc(pl.image)+'" onerror="this.src=\''+FALLBACK_ART+'\'" alt=""></div><div><div class="detail-kicker">Playlist</div><div class="detail-title">'+esc(pl.name)+'</div><div class="detail-sub">'+(pl.songs?pl.songs.length:0)+' songs</div><div class="detail-actions"><button class="btn btn-primary" data-action="play-all" data-ctx="playlist-'+esc(id)+'">'+svgPlay()+' Play</button><button class="icon-btn glass-1 heart-btn'+(fav?" active":"")+'" data-action="toggle-fav-playlist" data-id="'+esc(pl.id)+'" data-name="'+esc(pl.name)+'" data-image="'+esc(pl.image)+'" data-count="'+(pl.songCount||0)+'">'+svgHeart(fav)+'</button></div></div></div><div class="row-list">'+(pl.songs||[]).map((s,i)=>songRow(s,i,{ctxKey:"playlist-"+id})).join("")+'</div>';
   }catch(err){if(err&&err.type==="aborted")return;if(seq===State._detailSeq&&State.view==="playlist")el.innerHTML=errorStateHTML(err.message||"Unable to load this playlist.","navigate('playlist',{id:'"+jsq(id)+"'});");}
+}
+/* ============================================================ PIPED DETAIL VIEWS (album / playlist / artist) ============================================================ */
+function ppId(id){ id=String(id==null?"":id); return id.indexOf("pp:")===0?id.slice(3):null; }
+async function ppDetail(kind,fullId){
+  const raw=ppId(fullId),el=$("#view-"+kind);el.innerHTML=detailSkeleton(kind==="artist");
+  if(State._detailAbort)try{State._detailAbort.abort();}catch(_){}
+  const ctl=new AbortController();State._detailAbort=ctl;const seq=++State._detailSeq;
+  const live=()=>!ctl.signal.aborted&&seq===State._detailSeq&&State.view===kind&&String(State.viewParams.id)===String(fullId);
+  const backBtn='<button class="icon-btn mobile-only" data-action="back" style="margin-bottom:10px;">'+backIcon()+'</button>';
+  const art=(img,round)=>'<div class="detail-art'+(round?" round":"")+'"><img src="'+esc(img)+'" onerror="this.src=\''+FALLBACK_ART+'\'" alt=""></div>';
+  try{
+    if(kind==="artist"){
+      const a=await Piped.channel(raw,ctl.signal);if(!live())return;
+      const key="artist-"+fullId;storeCtx(key,a.tracks);const fav=Favorites.isArtistFav(fullId);
+      el.innerHTML=backBtn+'<div class="detail-hero">'+art(a.image,true)+'<div><div class="detail-kicker">Artist</div><div class="detail-title">'+esc(a.name)+'</div><div class="detail-sub">'+(a.subs?(a.subs.toLocaleString()+" subscribers"):"Piped")+'</div><div class="detail-actions"><button class="btn btn-primary" data-action="play-all" data-ctx="'+esc(key)+'">'+svgPlay()+' Play</button><button class="icon-btn glass-1 heart-btn'+(fav?" active":"")+'" data-action="toggle-fav-artist" data-id="'+esc(fullId)+'" data-name="'+esc(a.name)+'" data-image="'+esc(a.image)+'">'+svgHeart(fav)+'</button></div></div></div>'
+        +'<div class="section-title" style="margin-bottom:12px;">Songs</div><div class="row-list">'+(a.tracks.length?a.tracks.map((x,i)=>songRow(x,i,{ctxKey:key})).join(""):'<div class="es-desc">No songs found.</div>')+'</div>'
+        +'<div class="section" style="margin-top:26px;"><div class="section-title" style="margin-bottom:12px;">Albums</div><div class="hscroll" id="pp-artist-albums">'+skeletonCards(5)+'</div></div>'
+        +(a.desc?'<div class="section"><div class="section-title" style="margin-bottom:10px;">About</div><div class="es-desc" style="max-width:640px;text-align:left;">'+esc(a.desc.slice(0,600))+(a.desc.length>600?"…":"")+'</div></div>':"");
+      try{
+        const pg=await Piped.page(a.name,"music_albums",ctl.signal);if(!live())return;
+        const albums=Piped.mapItems(pg.items,"albums").slice(0,14),body=$("#pp-artist-albums");
+        if(body)body.innerHTML=albums.length?albums.map(albumCard).join(""):'<div class="es-desc">No albums found.</div>';
+      }catch(e){ if(e&&e.type==="aborted")return; const body=$("#pp-artist-albums");if(body)body.innerHTML='<div class="es-desc">No albums found.</div>'; }
+    }else{
+      const p=await Piped.playlist(raw,ctl.signal);if(!live())return;
+      const isAlb=kind==="album",key=kind+"-"+fullId;storeCtx(key,p.tracks);
+      const fav=isAlb?Favorites.isAlbumFav(fullId):Favorites.isPlaylistFav(fullId);
+      const favBtn=isAlb
+        ?'<button class="icon-btn glass-1 heart-btn'+(fav?" active":"")+'" data-action="toggle-fav-album" data-id="'+esc(fullId)+'" data-name="'+esc(p.name)+'" data-image="'+esc(p.image)+'" data-artist="'+esc(p.uploader)+'">'+svgHeart(fav)+'</button>'
+        :'<button class="icon-btn glass-1 heart-btn'+(fav?" active":"")+'" data-action="toggle-fav-playlist" data-id="'+esc(fullId)+'" data-name="'+esc(p.name)+'" data-image="'+esc(p.image)+'" data-count="'+p.tracks.length+'">'+svgHeart(fav)+'</button>';
+      el.innerHTML=backBtn+'<div class="detail-hero">'+art(p.image||(p.tracks[0]&&p.tracks[0].image)||"")+'<div><div class="detail-kicker">'+(isAlb?"Album":"Playlist")+'</div><div class="detail-title">'+esc(p.name)+'</div><div class="detail-sub">'+(p.uploader?esc(p.uploader)+" · ":"")+p.tracks.length+' songs</div><div class="detail-actions"><button class="btn btn-primary" data-action="play-all" data-ctx="'+esc(key)+'">'+svgPlay()+' Play</button>'+favBtn+'</div></div></div><div class="row-list">'+(p.tracks.length?p.tracks.map((x,i)=>songRow(x,i,{ctxKey:key})).join(""):'<div class="es-desc">No songs found.</div>')+'</div>';
+    }
+  }catch(err){
+    if(err&&err.type==="aborted")return;
+    if(live())el.innerHTML=errorStateHTML((err&&err.message)||"Unable to load this page from Piped.","navigate('"+kind+"',{id:'"+jsq(fullId)+"'});");
+  }
 }
 /* ============================================================ RENDER: SETTINGS ============================================================ */
 function renderSettingsIfActive(){ if(State.view==="settings") renderSettings(); }
@@ -8037,7 +8148,7 @@ if(typeof _rse==='function')window.renderSearchEmpty=function(){const r=_rse.app
    +'<div class="bos-h"><span>Browse all</span></div><div class="bos-chips">'+BROWSE.map(q=>'<button class="stab" data-bos-q="'+esc(q)+'">'+esc(q)+'</button>').join('')+'</div>');}catch(e){}return r;};
 const _rs=window.runSearch;
 if(typeof _rs==='function')window.runSearch=async function(){const r=await _rs.apply(this,arguments);
-  try{if(State.searchTab==='all'&&State.searchQuery){const res=gid('search-results'),list=ctxStore.get('search-all');
+  try{if(State.searchSrc!=='piped'&&State.searchTab==='all'&&State.searchQuery){const res=gid('search-results'),list=ctxStore.get('search-all');
    if(res&&list&&list[0]&&res.querySelector('.row-list')&&!res.querySelector('#bos-top')){const t=list[0];
     res.insertAdjacentHTML('afterbegin','<div id="bos-top"><div class="section-title" style="margin:6px 0 10px;">Top result</div><div class="bos-top-card" data-action="play-song" data-id="'+esc(t.id)+'" data-ctx="search-all"><img src="'+esc(t.image)+'" alt="" onerror="this.src=\''+FALLBACK_ART+'\'"><div style="min-width:0"><b>'+esc(t.name)+'</b><small>Song • '+esc(t.artistName)+'</small></div></div></div>');}}}catch(e){}return r;};
 document.addEventListener('click',e=>{const t=e.target;if(!t.closest)return;
