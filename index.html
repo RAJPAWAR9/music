@@ -1109,20 +1109,30 @@ const Piped=(function(){
 /* ============================================================ YOUTUBE VIDEO ENGINE (official IFrame Player API) ============================================================
    Piped-tab songs play through YouTube's own embedded player. The iframe is placed exactly over the artwork (mini player, or full player when it is open),
    with pointer-events:none so taps go to the artwork underneath. The player stays fully visible, so YouTube's own ads/branding are untouched.
+   If the browser blocks autoplay, the video becomes tappable ("Tap the video to start") until it plays, then goes click-through again.
    The engine "borrows" one of the two <audio> elements and mirrors currentTime / duration / paused / volume / play() / pause() / events onto it,
-   so progress bar, seek, lyrics sync, next/back, queue, media session and play/pause all keep working unchanged. */
+   so progress bar, seek, lyrics sync, next/back, queue, media session and play/pause all keep working unchanged.
+   Debug: every step logs to the console with the prefix [YTV]. */
 const YTV=(function(){
-  let host=null,player=null,ready=false,apiP=null,owner=null,state=-1,isPlay=false,wantPlay=false,vol=1,trackDur=0,metaFired=false,starting=false,errored=false,tick=0,raf=0,lastKey="";
+  let host=null,player=null,ready=false,apiP=null,owner=null,state=-1,isPlay=false,wantPlay=false,vol=1,trackDur=0,metaFired=false,starting=false,errored=false,blocked=false,tick=0,raf=0,lastKey="";
   const PROPS=["currentTime","duration","paused","ended","volume","muted","readyState"];
+  function log(){ try{ console.log.apply(console,["[YTV]"].concat([].slice.call(arguments))); }catch(e){} }
   function fire(n){ if(owner){ try{ owner.dispatchEvent(new Event(n)); }catch(e){} } }
+  function setTappable(on){
+    blocked=on;
+    if(!host) return;
+    const v=on?"auto":"none"; host.style.pointerEvents=v;
+    const fr=host.querySelector("iframe"); if(fr) fr.style.pointerEvents=v;
+  }
   function loadApi(){
     if(window.YT&&window.YT.Player) return Promise.resolve();
     if(apiP) return apiP;
     apiP=new Promise(function(res,rej){
       const prev=window.onYouTubeIframeAPIReady;
-      window.onYouTubeIframeAPIReady=function(){ try{ if(prev) prev(); }catch(e){} res(); };
+      const to=setTimeout(function(){ apiP=null; log("iframe_api timeout"); rej(new Error("YouTube player timed out while loading")); },10000);
+      window.onYouTubeIframeAPIReady=function(){ clearTimeout(to); log("iframe_api ready"); try{ if(prev) prev(); }catch(e){} res(); };
       const sc=document.createElement("script"); sc.src="https://www.youtube.com/iframe_api"; sc.async=true;
-      sc.onerror=function(){ apiP=null; rej(new Error("YouTube player could not be loaded")); };
+      sc.onerror=function(){ clearTimeout(to); apiP=null; log("iframe_api blocked / failed to load"); rej(new Error("YouTube player could not be loaded")); };
       document.head.appendChild(sc);
     });
     return apiP;
@@ -1135,20 +1145,32 @@ const YTV=(function(){
     host=document.createElement("div"); host.id="yt-host"; host.setAttribute("aria-hidden","true");
     const m=document.createElement("div"); m.id="yt-mount"; host.appendChild(m); document.body.appendChild(host);
   }
-  function ensurePlayer(){
-    if(player&&ready) return Promise.resolve(player);
-    return loadApi().then(function(){
-      ensureHost();
-      return new Promise(function(res){
-        const vars={autoplay:0,controls:0,disablekb:1,fs:0,modestbranding:1,playsinline:1,rel:0,iv_load_policy:3};
-        if(/^https?:$/.test(location.protocol)) vars.origin=location.origin;
-        player=new YT.Player("yt-mount",{width:"320",height:"180",playerVars:vars,events:{onReady:function(){ ready=true; res(player); },onStateChange:onState,onError:onErr}});
-      });
+  function waitReady(ms){
+    return new Promise(function(res,rej){
+      const t0=Date.now();
+      (function chk(){ if(ready) return res(player); if(Date.now()-t0>ms){ log("player not ready after "+ms+"ms"); return rej(new Error("The YouTube player didn't respond")); } setTimeout(chk,100); })();
     });
   }
+  function ensurePlayer(){
+    if(ready) return Promise.resolve(player);
+    if(player) return waitReady(12000);
+    return loadApi().then(function(){
+      if(!player){
+        ensureHost(); lastKey=""; place();   /* host must be visible & sized BEFORE the iframe is created */
+        const vars={autoplay:0,controls:0,disablekb:1,fs:0,modestbranding:1,playsinline:1,rel:0,iv_load_policy:3};
+        if(/^https?:$/.test(location.protocol)) vars.origin=location.origin; else log("page is opened from "+location.protocol+" - YouTube may refuse (error 153). Use http://localhost or https.");
+        player=new YT.Player("yt-mount",{width:"320",height:"180",playerVars:vars,events:{
+          onReady:function(){ ready=true; log("player ready"); },
+          onStateChange:onState, onError:onErr, onAutoplayBlocked:onBlocked }});
+      }
+      return waitReady(12000);
+    });
+  }
+  function onBlocked(){ log("autoplay blocked by the browser"); if(owner){ setTappable(true); toast("Tap the video to start playback."); } }
   function onState(e){
-    state=e.data; if(!owner) return;
+    state=e.data; log("state",state); if(!owner) return;
     if(state===1){
+      if(blocked) setTappable(false);
       if(!isPlay){ isPlay=true; fire("play"); }
       if(!metaFired){ metaFired=true; fire("loadedmetadata"); fire("durationchange"); }
       fire("playing");
@@ -1157,17 +1179,17 @@ const YTV=(function(){
     else if(state===0){ isPlay=false; wantPlay=false; fire("timeupdate"); fire("ended"); }
   }
   function onErr(e){
-    errored=true; const c=e&&e.data;
+    errored=true; const c=e&&e.data; log("player error",c);
     toast((c===101||c===150||c===153)?"This video can't be played in the embedded player.":"YouTube couldn't play this video.","error");
     if(!starting) fire("error");
   }
   function place(){
-    if(!host||!owner) return;
+    if(!host) return;
     const fp=document.getElementById("full-player"), full=!!(fp&&fp.classList.contains("open"));
     let t=null,r=null,z=41;
     if(full){ const a=document.getElementById("fp-art"); t=a&&a.parentElement; r=t&&t.getBoundingClientRect(); z=81; }
     if(!r||r.width<2){ t=document.getElementById("mini-art-wrap"); r=t&&t.getBoundingClientRect(); z=41; }
-    if(!r||r.width<2) return;
+    if(!r||r.width<2){ if(!lastKey){ const s0=host.style; s0.left="16px"; s0.top="16px"; s0.width="52px"; s0.height="52px"; s0.display="block"; } return; }
     const key=[r.left,r.top,r.width,r.height,z].map(function(n){ return Math.round(n*10)/10; }).join(",");
     if(key===lastKey) return; lastKey=key;
     const s=host.style; s.left=r.left+"px"; s.top=r.top+"px"; s.width=r.width+"px"; s.height=r.height+"px"; s.zIndex=String(z); s.opacity="1"; s.display="block";
@@ -1200,27 +1222,33 @@ const YTV=(function(){
     try{ delete el.play; delete el.pause; }catch(e){}
     try{ el.volume=v; }catch(e){}
     try{ if(ready) player.stopVideo(); }catch(e){}
-    clearInterval(tick); tick=0; isPlay=false; wantPlay=false; state=-1;
+    clearInterval(tick); tick=0; isPlay=false; wantPlay=false; state=-1; setTappable(false);
     if(host) host.style.display="none";
   }
   async function play(el,track,startAt){
+    log("play",track&&track._ytId);
     try{ HTMLMediaElement.prototype.pause.call(el); }catch(e){}
     try{ el.removeAttribute("src"); HTMLMediaElement.prototype.load.call(el); }catch(e){}
     const v0=Number(el.volume);
-    const p=await ensurePlayer();
+    let p;
+    try{ p=await ensurePlayer(); }
+    catch(e){ log("init failed:",e&&e.message); toast("Couldn't load the YouTube player. Check your internet, or turn off the ad-blocker / VPN for youtube.com.","error"); throw e; }
     attach(el);
     vol=Number.isFinite(v0)?v0:1; trackDur=Number(track.duration)||0;
-    metaFired=false; errored=false; starting=true; isPlay=false; wantPlay=true; state=-1;
+    metaFired=false; errored=false; starting=true; isPlay=false; wantPlay=true; state=-1; setTappable(false);
     el.dataset.boosterTrackId=String(track.id||"");
     try{ p.setVolume(Math.round(vol*100)); }catch(e){}
     p.loadVideoById({videoId:track._ytId,startSeconds:startAt>0?startAt:0});
     try{
       await new Promise(function(res){
-        let n=0; const iv=setInterval(function(){ n++; if(isPlay||errored||n>60){ clearInterval(iv); res(); } },120);
+        let n=0; const iv=setInterval(function(){ n++; if(isPlay||errored||blocked||n>50){ clearInterval(iv); res(); } },120);
       });
     }finally{ starting=false; }
     if(errored) throw new Error("yt-error");
-    if(!isPlay) throw new Error("yt-not-started");   /* autoplay blocked: app shows "Tap play" and the tap starts the video */
+    if(!isPlay){
+      if(!blocked){ log("video did not start in 6s, state="+state); setTappable(true); toast("Tap the video to start playback."); }
+      throw new Error("yt-not-started");   /* app shows "Tap play"; the video stays tappable until it starts */
+    }
   }
   return {play:play,detach:detach};
 })();
