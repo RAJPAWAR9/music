@@ -3647,10 +3647,12 @@ function init(){
   // Robust source recovery: try alternate quality URLs before declaring a track dead.
   const originalLoadAndPlay = loadAndPlay;
   loadAndPlay = async function(el, track, startAt){
+      if(track && track._yt) return originalLoadAndPlay.apply(this, arguments);
     const urls=[];
     const preferred=bestAudioUrl(track);
     if(preferred) urls.push(preferred);
     Object.values(track && track.downloadUrl || {}).forEach(u=>{ if(u && !urls.includes(u)) urls.push(u); });
+        if(!urls.length) return originalLoadAndPlay.apply(this, arguments);
     let lastErr=null;
     for(const url of urls.slice(0,4)){
       try{
