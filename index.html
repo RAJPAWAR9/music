@@ -1072,7 +1072,7 @@ const Piped=(function(){
   }
   function toTrack(it){
     const m=/[?&]v=([\w-]{6,})/.exec(it&&it.url||""); if(!m) return null;
-    return { id:"yt_"+m[1], _ytId:m[1], _piped:true, _needsFetch:true,
+    return { id:"yt_"+m[1], _ytId:m[1], _piped:true, _yt:true, _needsFetch:false,
       name:String(it.title||"Untitled").replace(/&quot;/g,'"').replace(/&amp;/g,"&"),
       artistName:String(it.uploaderName||"Unknown Artist").replace(/\s*-\s*Topic$/i,""),
       duration:Number(it.duration)||0, year:"", language:"", image:"https://i.ytimg.com/vi/"+m[1]+"/mqdefault.jpg",
@@ -1088,7 +1088,7 @@ const Piped=(function(){
     const mp4=a.filter(function(s){ return /mp4|m4a|aac/i.test(s.mimeType||s.format||""); });  /* AAC plays everywhere; opus/webm may fail on Safari */
     return (mp4.length?mp4:a).sort(function(x,y){ return (y.bitrate||0)-(x.bitrate||0); })[0];
   }
-  function needsResolve(t){ return !!t&&!!t._piped&&(!t.downloadUrl||!Object.keys(t.downloadUrl).length||Date.now()-(t._pipedAt||0)>URL_TTL); }
+  function needsResolve(t){ return !!t&&!!t._piped&&!t._yt&&(!t.downloadUrl||!Object.keys(t.downloadUrl).length||Date.now()-(t._pipedAt||0)>URL_TTL); }
   /* resolves IN PLACE so queue / favourites / history copies of the same object get the fresh URL */
   async function resolve(t,signal){
     if(!needsResolve(t)) return t;
@@ -1104,6 +1104,125 @@ const Piped=(function(){
     return t;
   }
   return { load:load, search:search, resolve:resolve, needsResolve:needsResolve };
+})();
+
+/* ============================================================ YOUTUBE VIDEO ENGINE (official IFrame Player API) ============================================================
+   Piped-tab songs play through YouTube's own embedded player. The iframe is placed exactly over the artwork (mini player, or full player when it is open),
+   with pointer-events:none so taps go to the artwork underneath. The player stays fully visible, so YouTube's own ads/branding are untouched.
+   The engine "borrows" one of the two <audio> elements and mirrors currentTime / duration / paused / volume / play() / pause() / events onto it,
+   so progress bar, seek, lyrics sync, next/back, queue, media session and play/pause all keep working unchanged. */
+const YTV=(function(){
+  let host=null,player=null,ready=false,apiP=null,owner=null,state=-1,isPlay=false,wantPlay=false,vol=1,trackDur=0,metaFired=false,starting=false,errored=false,tick=0,raf=0,lastKey="";
+  const PROPS=["currentTime","duration","paused","ended","volume","muted","readyState"];
+  function fire(n){ if(owner){ try{ owner.dispatchEvent(new Event(n)); }catch(e){} } }
+  function loadApi(){
+    if(window.YT&&window.YT.Player) return Promise.resolve();
+    if(apiP) return apiP;
+    apiP=new Promise(function(res,rej){
+      const prev=window.onYouTubeIframeAPIReady;
+      window.onYouTubeIframeAPIReady=function(){ try{ if(prev) prev(); }catch(e){} res(); };
+      const sc=document.createElement("script"); sc.src="https://www.youtube.com/iframe_api"; sc.async=true;
+      sc.onerror=function(){ apiP=null; rej(new Error("YouTube player could not be loaded")); };
+      document.head.appendChild(sc);
+    });
+    return apiP;
+  }
+  function ensureHost(){
+    if(host) return;
+    const st=document.createElement("style");
+    st.textContent="#yt-host{position:fixed;left:0;top:0;width:0;height:0;overflow:hidden;pointer-events:none;opacity:1;z-index:41;background:#000;display:none}#yt-host iframe{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);border:0;pointer-events:none;opacity:1}";
+    document.head.appendChild(st);
+    host=document.createElement("div"); host.id="yt-host"; host.setAttribute("aria-hidden","true");
+    const m=document.createElement("div"); m.id="yt-mount"; host.appendChild(m); document.body.appendChild(host);
+  }
+  function ensurePlayer(){
+    if(player&&ready) return Promise.resolve(player);
+    return loadApi().then(function(){
+      ensureHost();
+      return new Promise(function(res){
+        const vars={autoplay:0,controls:0,disablekb:1,fs:0,modestbranding:1,playsinline:1,rel:0,iv_load_policy:3};
+        if(/^https?:$/.test(location.protocol)) vars.origin=location.origin;
+        player=new YT.Player("yt-mount",{width:"320",height:"180",playerVars:vars,events:{onReady:function(){ ready=true; res(player); },onStateChange:onState,onError:onErr}});
+      });
+    });
+  }
+  function onState(e){
+    state=e.data; if(!owner) return;
+    if(state===1){
+      if(!isPlay){ isPlay=true; fire("play"); }
+      if(!metaFired){ metaFired=true; fire("loadedmetadata"); fire("durationchange"); }
+      fire("playing");
+    }else if(state===2){ if(isPlay){ isPlay=false; fire("pause"); } }
+    else if(state===3){ fire("waiting"); }
+    else if(state===0){ isPlay=false; wantPlay=false; fire("timeupdate"); fire("ended"); }
+  }
+  function onErr(e){
+    errored=true; const c=e&&e.data;
+    toast((c===101||c===150||c===153)?"This video can't be played in the embedded player.":"YouTube couldn't play this video.","error");
+    if(!starting) fire("error");
+  }
+  function place(){
+    if(!host||!owner) return;
+    const fp=document.getElementById("full-player"), full=!!(fp&&fp.classList.contains("open"));
+    let t=null,r=null,z=41;
+    if(full){ const a=document.getElementById("fp-art"); t=a&&a.parentElement; r=t&&t.getBoundingClientRect(); z=81; }
+    if(!r||r.width<2){ t=document.getElementById("mini-art-wrap"); r=t&&t.getBoundingClientRect(); z=41; }
+    if(!r||r.width<2) return;
+    const key=[r.left,r.top,r.width,r.height,z].map(function(n){ return Math.round(n*10)/10; }).join(",");
+    if(key===lastKey) return; lastKey=key;
+    const s=host.style; s.left=r.left+"px"; s.top=r.top+"px"; s.width=r.width+"px"; s.height=r.height+"px"; s.zIndex=String(z); s.opacity="1"; s.display="block";
+    s.borderRadius=getComputedStyle(t).borderRadius||"0";
+    const fr=host.querySelector("iframe");
+    if(fr){ fr.style.width=Math.max(r.width,r.height*16/9)+"px"; fr.style.height=Math.max(r.height,r.width*9/16)+"px"; }
+  }
+  function loop(){ if(!owner){ raf=0; return; } if(!document.hidden) place(); raf=requestAnimationFrame(loop); }
+  function attach(el){
+    if(owner===el) return;
+    detach();
+    owner=el; const D=Object.defineProperty;
+    D(el,"currentTime",{configurable:true,get:function(){ try{ return ready?(player.getCurrentTime()||0):0; }catch(e){ return 0; } },set:function(v){ try{ if(ready) player.seekTo(Number(v)||0,true); }catch(e){} setTimeout(function(){ fire("seeked"); fire("timeupdate"); },0); }});
+    D(el,"duration",{configurable:true,get:function(){ try{ const d=ready?player.getDuration():0; return d>0?d:(trackDur||NaN); }catch(e){ return trackDur||NaN; } }});
+    D(el,"paused",{configurable:true,get:function(){ return !(isPlay||(wantPlay&&state===3)); }});
+    D(el,"ended",{configurable:true,get:function(){ return state===0; }});
+    D(el,"readyState",{configurable:true,get:function(){ return (state===1||state===2||state===3)?4:0; }});
+    D(el,"volume",{configurable:true,get:function(){ return vol; },set:function(v){ vol=Math.max(0,Math.min(1,Number(v)||0)); try{ if(ready) player.setVolume(Math.round(vol*100)); }catch(e){} }});
+    let mutedV=false;
+    D(el,"muted",{configurable:true,get:function(){ return mutedV; },set:function(v){ mutedV=!!v; try{ if(ready){ if(mutedV) player.mute(); else player.unMute(); } }catch(e){} }});
+    el.play=function(){ wantPlay=true; try{ if(ready) player.playVideo(); }catch(e){} return Promise.resolve(); };
+    el.pause=function(){ wantPlay=false; try{ if(ready) player.pauseVideo(); }catch(e){} };
+    tick=setInterval(function(){ if(isPlay) fire("timeupdate"); },250);
+    lastKey=""; if(!raf) raf=requestAnimationFrame(loop);
+  }
+  function detach(){
+    if(!owner) return;
+    const el=owner, v=vol; owner=null;
+    PROPS.forEach(function(k){ try{ delete el[k]; }catch(e){} });
+    try{ delete el.play; delete el.pause; }catch(e){}
+    try{ el.volume=v; }catch(e){}
+    try{ if(ready) player.stopVideo(); }catch(e){}
+    clearInterval(tick); tick=0; isPlay=false; wantPlay=false; state=-1;
+    if(host) host.style.display="none";
+  }
+  async function play(el,track,startAt){
+    try{ HTMLMediaElement.prototype.pause.call(el); }catch(e){}
+    try{ el.removeAttribute("src"); HTMLMediaElement.prototype.load.call(el); }catch(e){}
+    const v0=Number(el.volume);
+    const p=await ensurePlayer();
+    attach(el);
+    vol=Number.isFinite(v0)?v0:1; trackDur=Number(track.duration)||0;
+    metaFired=false; errored=false; starting=true; isPlay=false; wantPlay=true; state=-1;
+    el.dataset.boosterTrackId=String(track.id||"");
+    try{ p.setVolume(Math.round(vol*100)); }catch(e){}
+    p.loadVideoById({videoId:track._ytId,startSeconds:startAt>0?startAt:0});
+    try{
+      await new Promise(function(res){
+        let n=0; const iv=setInterval(function(){ n++; if(isPlay||errored||n>60){ clearInterval(iv); res(); } },120);
+      });
+    }finally{ starting=false; }
+    if(errored) throw new Error("yt-error");
+    if(!isPlay) throw new Error("yt-not-started");   /* autoplay blocked: app shows "Tap play" and the tap starts the video */
+  }
+  return {play:play,detach:detach};
 })();
 
 function normalizeAlbumFromCompact(raw){ return { id: raw.id, name:(raw.title||"Untitled").replace(/&quot;/g,'"').replace(/&amp;/g,"&"), image: bestImage(raw.image), artistName: raw.description||"", year:"" }; }
@@ -1430,6 +1549,7 @@ function primaryAudio(){ return audios[activeIdx]; }
 function secondaryAudio(){ return audios[1-activeIdx]; }
 audioA.volume = State.volume; audioB.volume = 0;
 function bestAudioUrl(track){
+  if(track&&track._yt) return null;
   const pref=State.settings.audioQuality, order=QUALITY_ORDER;
   const startIdx=order.indexOf(pref)>=0?order.indexOf(pref):order.indexOf("160");
   for(let i=startIdx;i<order.length;i++) if(track.downloadUrl&&track.downloadUrl[order[i]]) return track.downloadUrl[order[i]];
@@ -1438,6 +1558,8 @@ function bestAudioUrl(track){
 }
 function fadeStop(el){ if(!el)return; try{el.pause();}catch(e){} try{el.removeAttribute("src");el.load();}catch(e){} try{el.volume=0;}catch(e){} try{delete el.dataset.boosterTrackId;}catch(e){} }
 async function loadAndPlay(el,track,startAt){
+  if(track&&track._yt) return YTV.play(el,track,startAt);
+  YTV.detach();
   const url=bestAudioUrl(track); if(!url)throw new Error("no-src");
   try{el.pause();}catch(e){}
   el.dataset.boosterTrackId=String(track.id||"");
@@ -1557,10 +1679,10 @@ const Player={
     const myToken=++this._playToken;
     if(contextList){Queue.setQueue(SmartRadio.prepareInitialQueue(track,contextList),0);State.smartRadioActive=false;}else if(isAuto)State.smartRadioActive=true;
     if(track._piped&&Piped.needsResolve(track)){try{await Piped.resolve(track);}catch(e){}if(myToken!==this._playToken)return false;}
-    if(!bestAudioUrl(track)){if(!isAuto)toast("This track has no playable audio source.","error");return false;}
+    if(!track._yt&&!bestAudioUrl(track)){if(!isAuto)toast("This track has no playable audio source.","error");return false;}
     const cur=primaryAudio(),hasActive=!!(cur&&cur.src&&State.currentTrack),same=!!(State.currentTrack&&State.currentTrack.id===track.id);
     const outgoingTrackId = hasActive && !same && State.currentTrack ? State.currentTrack.id : null;
-    const canCF=isAuto&&hasActive&&!same&&State.settings.crossfade&&State.settings.crossfadeDuration>0&&!cur.paused&&!crossfadeRunning;
+    const canCF=isAuto&&hasActive&&!same&&State.settings.crossfade&&State.settings.crossfadeDuration>0&&!cur.paused&&!crossfadeRunning&&!track._yt&&!(State.currentTrack&&State.currentTrack._yt);
     State.currentTrack=track;State._crossfadeTrackId=track.id;State._crossfadeTriggered=false;State._autoTransitionInFlight=isAuto&&canCF;
     const currentEl=primaryAudio();
     const replayingFinishedTrack = same && (!currentEl || currentEl.ended || (Number.isFinite(currentEl.duration) && currentEl.duration > 0 && currentEl.currentTime >= currentEl.duration - 1));
