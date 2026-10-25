@@ -771,11 +771,10 @@ body{overscroll-behavior-y:none;}
     <div class="fp-head">
       <button class="icon-btn" id="fp-close" style="color:#fff;" aria-label="Minimize player"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg></button>
       <div class="fp-head-title">Now Playing</div>
-      <div class="fp-seg" id="fp-seg" role="tablist" aria-label="Playback mode"><span class="fp-seg-thumb"></span><button type="button" role="tab" data-seg="song" class="on" aria-selected="true">Song</button><button type="button" role="tab" data-seg="video" aria-selected="false">Video</button></div>
       <button class="icon-btn" id="fp-queue-open" style="color:#fff;" aria-label="Open queue"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h13M3 12h13M3 18h9"/><path d="M18 15l3 3-3 3"/></svg></button>
     </div>
     <div class="fp-body">
-      <div class="fp-art-wrap"><img id="fp-art" src="" alt=""><video id="fp-vid" class="fp-vid" playsinline webkit-playsinline preload="none" disablepictureinpicture></video><div class="fp-vid-load" id="fp-vid-load"></div><button type="button" class="fp-vid-fs" id="fp-vid-fs" aria-label="Fullscreen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3"/></svg></button></div>
+      <div class="fp-art-wrap"><img id="fp-art" src="" alt=""></div>
       <div class="fp-meta">
         <div class="fp-meta-text">
           <div class="fp-title" id="fp-title">—</div>
@@ -2540,7 +2539,6 @@ function renderFullPlayer(){
   const heart=$("#fp-heart");
   heart.classList.toggle("active", Favorites.isSongFav(t.id));
   heart.innerHTML = svgHeart(Favorites.isSongFav(t.id));
-  try{const fpx=$("#full-player");fpx.classList.toggle("fp-yt",t.source==="youtube");if(t.source!=="youtube"&&window.BosYT&&window.BosYT.isVideo&&window.BosYT.isVideo())window.BosYT.setVideo(false);}catch(_){}
   renderShuffleRepeatIcons();
 }
 
@@ -8510,42 +8508,6 @@ window.__bosLyricFix={fixLine:fixLine,demoji:demoji};
   <div id="yt-stage"></div>
   <div id="yt-list"></div>
 </div>
-<style id="bos-yt-video-css">
-/* ===== BOOSTER + : Song | Video switch + video stage (matches the player's glass / spring motion) ===== */
-.fp-seg{display:none;position:relative;grid-template-columns:1fr 1fr;padding:3px;border-radius:999px;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.16);backdrop-filter:blur(18px) saturate(1.5);-webkit-backdrop-filter:blur(18px) saturate(1.5);box-shadow:0 8px 24px rgba(0,0,0,.22)}
-#full-player.fp-yt .fp-seg{display:grid;animation:fpSegIn .6s var(--sp2,cubic-bezier(.34,1.56,.64,1)) backwards}
-#full-player.fp-yt .fp-head-title{display:none}
-.fp-seg-thumb{position:absolute;top:3px;bottom:3px;left:3px;width:calc(50% - 3px);border-radius:999px;background:rgba(255,255,255,.94);box-shadow:0 4px 14px rgba(0,0,0,.3);transition:transform .6s var(--sp2,cubic-bezier(.34,1.56,.64,1))}
-#full-player.fp-video-on .fp-seg-thumb{transform:translateX(100%)}
-.fp-seg button{position:relative;z-index:1;min-width:74px;padding:7px 14px;border:0;background:none;border-radius:999px;cursor:pointer;font-family:inherit;font-size:12px;font-weight:700;letter-spacing:.05em;color:rgba(255,255,255,.78);transition:color .35s ease,transform .3s var(--sp2,ease)}
-.fp-seg button.on{color:#141420}
-.fp-seg button:active{transform:scale(.94)}
-[data-theme="light"] .fp-seg{background:rgba(20,20,30,.07);border-color:rgba(20,20,30,.1)}
-[data-theme="light"] .fp-seg-thumb{background:#141420}
-[data-theme="light"] .fp-seg button{color:rgba(20,20,30,.65)}
-[data-theme="light"] .fp-seg button.on{color:#fff}
-@keyframes fpSegIn{from{opacity:0;transform:scale(.86) translateY(-6px);filter:blur(6px)}}
-/* artwork box grows from the square cover into a 16:9 video screen */
-html body:not(.bos-x) #full-player .fp-art-wrap{height:min(78vw,340px);aspect-ratio:auto;
-  transition:scale .95s cubic-bezier(.22,1,.36,1),box-shadow .95s cubic-bezier(.22,1,.36,1),transform .45s var(--ease-smooth,ease),width .75s cubic-bezier(.22,1,.36,1),height .75s cubic-bezier(.22,1,.36,1),border-radius .75s cubic-bezier(.22,1,.36,1)}
-html body:not(.bos-x) #full-player.fp-video-on .fp-art-wrap{width:min(calc(100vw - 44px),476px);height:calc(min(calc(100vw - 44px),476px)*.5625);border-radius:18px}
-#full-player.fp-video-on #fp-art{opacity:0 !important}
-.fp-vid{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:#000;opacity:0;pointer-events:none;z-index:2;transition:opacity .6s var(--ease-smooth,ease)}
-#full-player.fp-video-on .fp-vid{opacity:1;pointer-events:auto}
-.fp-vid-frame{position:absolute;inset:0;width:100%;height:100%;border:0;background:#000;z-index:2;opacity:0;pointer-events:none;transition:opacity .6s var(--ease-smooth,ease)}
-#full-player.fp-vframe .fp-vid-frame{opacity:1;pointer-events:auto}
-.fp-vid-load{position:absolute;inset:0;z-index:3;display:grid;place-items:center;background:rgba(0,0,0,.22);opacity:0;pointer-events:none;transition:opacity .35s ease}
-.fp-vid-load::after{content:"";width:34px;height:34px;border-radius:50%;border:3px solid rgba(255,255,255,.25);border-top-color:#fff;animation:fpVidSpin .8s linear infinite}
-.fp-vid-load.on{opacity:1}
-@keyframes fpVidSpin{to{transform:rotate(360deg)}}
-.fp-vid-fs{position:absolute;right:10px;bottom:10px;z-index:4;width:34px;height:34px;border-radius:50%;display:grid;place-items:center;padding:0;color:#fff;cursor:pointer;background:rgba(20,22,32,.5);border:1px solid rgba(255,255,255,.2);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);opacity:0;transform:scale(.7);pointer-events:none;transition:opacity .4s ease .25s,transform .55s var(--sp2,cubic-bezier(.34,1.56,.64,1)) .25s}
-.fp-vid-fs svg{width:16px;height:16px}
-#full-player.fp-video-on .fp-vid-fs{opacity:1;transform:none;pointer-events:auto}
-.fp-art-wrap:fullscreen{width:100vw !important;height:100vh !important;border-radius:0 !important;scale:1 !important;background:#000}
-.fp-art-wrap:fullscreen .fp-vid{object-fit:contain}
-.fp-art-wrap:-webkit-full-screen{width:100vw !important;height:100vh !important;border-radius:0 !important;scale:1 !important;background:#000}
-@media (prefers-reduced-motion:reduce){.fp-seg-thumb,.fp-vid,.fp-vid-fs{transition-duration:.12s !important}#full-player.fp-yt .fp-seg{animation:none}}
-</style>
 <script id="yt-source">
 (function(){
   // ==== SMART SERVER POOL: health-ranked, self-healing, auto-fallback ====
@@ -8804,43 +8766,24 @@ html body:not(.bos-x) #full-player.fp-video-on .fp-art-wrap{width:min(calc(100vw
     // mode 'audio' = real audio stream (survives screen-off); 'iframe' = embed (last resort only)
     // vid = video mode switched on; vidReady = the <video> has taken over the sound
     var Y = { on:false, playing:false, id:'', dur:0, base:0, t0:0, host:best(), fr:null, tm:0,
-              au:null, vd:null, mode:'', tried:[], tok:0, wd:0, vol:1, rate:1, muted:false,
-              vid:false, vidReady:false, vidBusy:false, vtok:0, vwd:0, vtried:[], vf:null, vframe:false, preferFrame:false };
-    function el(){ return (Y.vid && Y.vidReady && Y.vd) ? Y.vd : Y.au; }
+              au:null, mode:'', tried:[], tok:0, wd:0, vol:1, rate:1, muted:false };
+    function el(){ return Y.au; }
     var fake = {
       get currentTime(){
-        if (Y.mode === 'audio' && !Y.vframe) { var e = el(); return (e && e.currentTime) || 0; }
+        if (Y.mode === 'audio') { var e = el(); return (e && e.currentTime) || 0; }
         if (!Y.playing) return Y.base; var c = Y.base + (Date.now()-Y.t0)/1000; return Y.dur ? Math.min(c, Y.dur) : c;
       },
       set currentTime(v){ Y.seek(v); },
       get duration(){ if (Y.dur) return Y.dur; var e = el(), d = e && e.duration; return (d && isFinite(d)) ? d : NaN; },
       get paused(){ return !Y.playing; }, get ended(){ return false; },
-      get volume(){ return Y.vol; }, set volume(v){ Y.vol = v; [Y.au, Y.vd].forEach(function(e){ if (e) try { e.volume = v; } catch (x) {} }); },
-      get muted(){ return Y.muted; }, set muted(v){ Y.muted = !!v; if (Y.au) Y.au.muted = !!v; if (Y.vd && Y.vidReady) Y.vd.muted = !!v; },
-      get playbackRate(){ return Y.rate; }, set playbackRate(v){ Y.rate = v || 1; [Y.au, Y.vd].forEach(function(e){ if (e) try { e.playbackRate = Y.rate; } catch (x) {} }); },
+      get volume(){ return Y.vol; }, set volume(v){ Y.vol = v; if (Y.au) try { Y.au.volume = v; } catch (x) {} },
+      get muted(){ return Y.muted; }, set muted(v){ Y.muted = !!v; if (Y.au) Y.au.muted = !!v; },
+      get playbackRate(){ return Y.rate; }, set playbackRate(v){ Y.rate = v || 1; if (Y.au) try { Y.au.playbackRate = Y.rate; } catch (x) {} },
       readyState:4, src:'yt',
       play:function(){ Y.resume(); return Promise.resolve(); }, pause:function(){ Y.halt(); },
       load:function(){}, addEventListener:function(){}, removeEventListener:function(){}
     };
     window.__bosYT = { get on(){ return Y.on; }, fake: fake };
-
-    // ---------- UI helpers ----------
-    function syncSeg(){
-      var s = document.getElementById('fp-seg'); if (!s) return;
-      [].forEach.call(s.querySelectorAll('button'), function(b){
-        var on = (b.dataset.seg === 'video') === Y.vid;
-        b.classList.toggle('on', on); b.setAttribute('aria-selected', on ? 'true' : 'false');
-      });
-    }
-    function setLoading(on){ var l = document.getElementById('fp-vid-load'); if (l) l.classList.toggle('on', !!on); }
-    function setVidFlag(on){ Y.vid = !!on; if (FP) FP.classList.toggle('fp-video-on', Y.vid); syncSeg(); }
-    function frameOff(){ if (Y.vf) { try { Y.vf.src = 'about:blank'; } catch (e) {} } Y.vframe = false; if (FP) FP.classList.remove('fp-vframe'); }
-    function vidClear(){
-      Y.vtok++; clearTimeout(Y.vwd); Y.vidReady = false; Y.vidBusy = false;
-      var v = Y.vd;
-      if (v) { try { v.pause(); } catch (e) {} v.onplaying = v.onerror = v.onwaiting = v.oncanplay = v.onloadedmetadata = null; v.removeAttribute('src'); try { v.load(); } catch (e) {} }
-      setLoading(false);
-    }
 
     // ---------- real audio element ----------
     function onEnded(){
@@ -8852,14 +8795,8 @@ html body:not(.bos-x) #full-player.fp-video-on .fp-art-wrap{width:min(calc(100vw
       var a = document.createElement('audio');
       a.id = 'yt-audio-el'; a.preload = 'auto'; a.setAttribute('playsinline', '');
       a.addEventListener('error', function(){ if (a.getAttribute('src')) Y.fail(a._tok); });
-      a.addEventListener('ended', function(){ if (Y.mode !== 'audio' || !Y.on) return; if (Y.vid && Y.vidReady) return; onEnded(); });
+      a.addEventListener('ended', function(){ if (Y.mode !== 'audio' || !Y.on) return; onEnded(); });
       document.body.append(a); Y.au = a; return a;
-    }
-    function video(){
-      if (Y.vd) return Y.vd;
-      var v = document.getElementById('fp-vid'); if (!v) return null;
-      v.addEventListener('ended', function(){ if (Y.mode !== 'audio' || !Y.on || !Y.vid || !Y.vidReady) return; onEnded(); });
-      Y.vd = v; return v;
     }
     function stopAudio(){
       clearTimeout(Y.wd);
@@ -8868,15 +8805,13 @@ html body:not(.bos-x) #full-player.fp-video-on .fp-art-wrap{width:min(calc(100vw
     // start a song: fastest server first; if it errors or stalls, the next server is tried automatically
     Y.start = function(id, start){
       Y.id = id; Y.tried = []; Y.base = start || 0; Y.playing = true; Y.mode = 'audio';
-      vidClear(); frameOff(); Y.vtried = [];
-      if (Y.vid) { var v0 = video(); if (v0) v0.poster = thumb(id); }
       if (Y.fr) Y.fr.src = 'about:blank';
       Y.next(); icons();
     };
     Y.next = function(){
       var tok = ++Y.tok;
       var h = ranked().filter(function(x){ return Y.tried.indexOf(x) < 0; })[0];
-      if (!h) { Y.mode = 'iframe'; stopAudio(); if (Y.vid) Y.setVideo(false); Y.load(best(), Y.id, Y.base); return; }   // last resort
+      if (!h) { Y.mode = 'iframe'; stopAudio(); Y.load(best(), Y.id, Y.base); return; }   // last resort
       Y.tried.push(h); Y.host = h;
       var a = audio(), t0 = performance.now(), startAt = Y.base;
       clearTimeout(Y.wd); a._tok = tok;
@@ -8888,7 +8823,6 @@ html body:not(.bos-x) #full-player.fp-video-on .fp-art-wrap{width:min(calc(100vw
       a.onplaying = function(){
         if (tok !== Y.tok) return;
         clearTimeout(Y.wd); markGood(h, performance.now() - t0); Y.tried = [h];
-        if (Y.vid && !Y.vidReady && !Y.vidBusy && !Y.vframe) { if (Y.preferFrame) Y.vidFrame(); else Y.vidLoad(); }
       };
       a.src = h + '/latest_version?id=' + enc(Y.id) + '&itag=140&local=true';
       a.volume = Y.vol; a.muted = Y.muted; a.playbackRate = Y.rate;
@@ -8904,96 +8838,6 @@ html body:not(.bos-x) #full-player.fp-video-on .fp-art-wrap{width:min(calc(100vw
       markBad(Y.host);
       var pos = Y.au && Y.au.currentTime; if (pos > 1) Y.base = pos;   // keep the position when a server drops mid-song
       Y.next();
-    };
-
-    // ---------- VIDEO MODE (Song | Video switch in the full player) ----------
-    // The muxed 360p stream carries its own sound, so the <video> simply takes over from the audio stream
-    // at the exact same second (and hands back when switched off).
-    Y.vidLoad = function(){
-      var v = video(); if (!v || !Y.vid || !Y.on || Y.mode !== 'audio') return;
-      var tok = ++Y.vtok, id = Y.id;
-      var order = ranked().filter(function(x){ return Y.vtried.indexOf(x) < 0; });
-      var h = (!Y.vtried.length && Y.host && !isCool(Y.host)) ? Y.host : order[0];
-      if (!h) { Y.vidFail(); return; }
-      Y.vtried.push(h); Y.vidBusy = true; setLoading(true); clearTimeout(Y.vwd);
-      var t0 = performance.now(), a = Y.au;
-      v.poster = thumb(id); v.muted = true; v.volume = Y.vol; v.playbackRate = Y.rate;
-      v.onloadedmetadata = function(){
-        if (tok !== Y.vtok) return;
-        try { v.currentTime = Math.max(0, ((a && a.currentTime) || Y.base || 0) + 0.3); } catch (e) {}
-      };
-      v.onplaying = function(){
-        if (tok !== Y.vtok) return;
-        clearTimeout(Y.vwd);
-        var at = a ? a.currentTime : v.currentTime;
-        if (Math.abs(v.currentTime - at) > 0.7) { try { v.currentTime = at; } catch (e) {} }
-        if (a) try { a.pause(); } catch (e) {}
-        v.muted = Y.muted;
-        Y.vidReady = true; Y.vidBusy = false; setLoading(false); markGood(h, performance.now() - t0);
-        if (!Y.playing) { try { v.pause(); } catch (e) {} }
-      };
-      v.onwaiting = function(){ if (tok === Y.vtok && Y.vidReady) setLoading(true); };
-      v.oncanplay = function(){ if (tok === Y.vtok) setLoading(false); };
-      v.onerror = function(){ if (tok === Y.vtok && v.getAttribute('src')) Y.vidRetry(tok); };
-      v.src = h + '/latest_version?id=' + enc(id) + '&itag=18&local=true';
-      var p = v.play(); if (p && p.catch) p.catch(function(){});
-      Y.vwd = setTimeout(function(){ if (tok === Y.vtok && !Y.vidReady) Y.vidRetry(tok); }, 5500);
-    };
-    Y.vidRetry = function(tok){
-      if (tok !== Y.vtok || !Y.vid) return;
-      var v = Y.vd, a = Y.au;
-      var pos = (Y.vidReady && v) ? v.currentTime : ((a && a.currentTime) || Y.base);
-      var wasPlaying = Y.playing;
-      Y.vidReady = false; Y.vidBusy = false;
-      if (a && a.getAttribute('src')) {                 // keep the music going on the audio stream meanwhile
-        try { a.currentTime = pos; } catch (e) {}
-        if (wasPlaying) { var p = a.play(); if (p && p.catch) p.catch(function(){}); }
-      }
-      if (Y.vtried.length >= 2) { Y.vidFail(); return; }
-      Y.vidLoad();
-    };
-    // Fallback: show the YouTube embed (with its own sound) inside the video box when the direct stream is blocked
-    Y.vidFrame = function(){
-      if (!Y.vid || !Y.on || !Y.id) return false;
-      var wrap = document.querySelector('#full-player .fp-art-wrap'); if (!wrap) return false;
-      var pos = (Y.vidReady && Y.vd) ? Y.vd.currentTime : ((Y.au && Y.au.currentTime) || Y.base || 0);
-      vidClear(); Y.preferFrame = true;
-      var f = Y.vf;
-      if (!f) { f = document.createElement('iframe'); f.className = 'fp-vid-frame'; f.allow = 'autoplay; picture-in-picture; fullscreen'; f.allowFullscreen = true; wrap.append(f); Y.vf = f; }
-      var h = isCool(Y.host) ? best() : (Y.host || best());
-      Y.base = pos; Y.t0 = Date.now(); Y.vframe = true;
-      f.src = h + '/embed/' + enc(Y.id) + '?autoplay=1&quality=medium' + (pos > 1 ? '&start=' + Math.floor(pos) : '');
-      if (Y.au) try { Y.au.pause(); } catch (e) {}
-      Y.playing = true; icons();
-      if (FP) FP.classList.add('fp-vframe');
-      return true;
-    };
-    Y.vidFail = function(){
-      if (!Y.vframe && Y.vidFrame()) return;
-      vidClear(); frameOff(); setVidFlag(false);
-      var v = Y.vd; if (v) v.removeAttribute('poster');
-      var a = Y.au; if (a && a.getAttribute('src') && Y.playing) { var p = a.play(); if (p && p.catch) p.catch(function(){}); }
-      toast('Video is not available for this song right now', 'error');
-    };
-    Y.setVideo = function(on){
-      on = !!on;
-      if (on === Y.vid) return Y.vid;
-      if (on) {
-        if (!Y.on || !Y.id || !isYt(State.currentTrack) || Y.mode !== 'audio') { toast('Video is available for BOOSTER + songs while they play', 'error'); return false; }
-        if (!video()) return false;
-        Y.vtried = []; setVidFlag(true);
-        if (Y.playing && Y.au && Y.au.getAttribute('src')) Y.vidLoad();
-        else { Y.vd.poster = thumb(Y.id); }                 // paused: show the poster, load when play is pressed
-        return true;
-      }
-      var v = Y.vd, a = Y.au, pos = Y.vframe ? fake.currentTime : ((v && Y.vidReady) ? v.currentTime : null);
-      vidClear(); frameOff(); setVidFlag(false);
-      if (v) v.removeAttribute('poster');
-      if (a && a.getAttribute('src')) {
-        if (pos != null) { try { a.currentTime = pos; } catch (e) {} }
-        if (Y.playing) { var p = a.play(); if (p && p.catch) p.catch(function(){}); }
-      }
-      return false;
     };
 
     // ---------- iframe fallback (old method) ----------
@@ -9034,10 +8878,8 @@ html body:not(.bos-x) #full-player.fp-video-on .fp-art-wrap{width:min(calc(100vw
     };
     Y.seek = function(v){
       v = Math.max(0, Math.min(+v || 0, Y.dur || 1e9)); Y.base = v; Y.t0 = Date.now();
-      if (Y.vframe) { if (!Y.playing) return; clearTimeout(Y.tm); Y.tm = setTimeout(function(){ if (Y.vf) Y.vf.src = (isCool(Y.host) ? best() : Y.host) + '/embed/' + enc(Y.id) + '?autoplay=1&quality=medium&start=' + Math.floor(Y.base); }, 250); return; }
       if (Y.mode === 'audio') {
         var e = el(); if (e) try { e.currentTime = v; } catch (x) {}
-        if (Y.vidReady && Y.au) try { Y.au.currentTime = v; } catch (x) {}
         return;
       }
       if (!Y.playing) return;
@@ -9045,11 +8887,9 @@ html body:not(.bos-x) #full-player.fp-video-on .fp-art-wrap{width:min(calc(100vw
     };
     Y.halt = function(){
       if (!Y.playing) return;
-      if (Y.vframe) { Y.base = fake.currentTime; Y.playing = false; if (Y.vf) Y.vf.src = 'about:blank'; icons(); return; }
       if (Y.mode === 'audio') {
         var e = el(); Y.base = e ? e.currentTime : Y.base;
-        try { if (Y.au) Y.au.pause(); } catch (x) {} try { if (Y.vd) Y.vd.pause(); } catch (x) {}
-        if (Y.vid && !Y.vidReady) { var v = Y.vd; Y.vtok++; clearTimeout(Y.vwd); Y.vidBusy = false; setLoading(false); if (v) { v.removeAttribute('src'); try { v.load(); } catch (x) {} } }
+        try { if (Y.au) Y.au.pause(); } catch (x) {}
         Y.playing = false; clearTimeout(Y.wd); icons(); return;
       }
       Y.base = fake.currentTime; Y.playing = false;
@@ -9057,27 +8897,19 @@ html body:not(.bos-x) #full-player.fp-video-on .fp-art-wrap{width:min(calc(100vw
     };
     Y.resume = function(){
       if (!Y.id || Y.playing) return;
-      if (Y.vframe) { Y.playing = true; Y.t0 = Date.now(); if (Y.vf) Y.vf.src = (isCool(Y.host) ? best() : Y.host) + '/embed/' + enc(Y.id) + '?autoplay=1&quality=medium' + (Y.base > 1 ? '&start=' + Math.floor(Y.base) : ''); icons(); return; }
       if (Y.mode === 'audio') {
-        if (Y.vid && Y.vidReady && Y.vd) {
-          Y.playing = true; icons();
-          var pv = Y.vd.play(); if (pv && pv.catch) pv.catch(function(){ Y.playing = false; icons(); });
-          return;
-        }
         var a = Y.au;
         if (!a || !a.getAttribute('src') || a.error) { Y.start(Y.id, Y.base); return; }
         if (Y.dur && Y.base >= Y.dur - 0.5) { try { a.currentTime = 0; } catch (e) {} Y.base = 0; }
         Y.playing = true; icons();
         var p = a.play(); if (p && p.catch) p.catch(function(){ Y.playing = false; icons(); });
-        if (Y.vid && !Y.vidReady) { Y.vtried = []; Y.vidLoad(); }
         return;
       }
       Y.load(isCool(Y.host) ? best() : Y.host, Y.id, Y.base);
     };
     Y.off = function(){
       Y.on = false; Y.playing = false; Y.base = 0; Y.mode = ''; Y.tok++; clearTimeout(Y.tm);
-      stopAudio(); vidClear(); frameOff(); setVidFlag(false);
-      if (Y.vd) Y.vd.removeAttribute('poster');
+      stopAudio();
       if (Y.fr) Y.fr.src = 'about:blank';
     };
     function icons(){ try { State.isPlaying = Y.playing; updatePlayIcons(); } catch (e) {} }
@@ -9085,7 +8917,7 @@ html body:not(.bos-x) #full-player.fp-video-on .fp-art-wrap{width:min(calc(100vw
     setInterval(function(){
       if (!Y.on) return;
       try {
-        if ((Y.mode === 'iframe' || Y.vframe) && Y.playing && Y.dur && fake.currentTime >= Y.dur - 0.3) { Y.halt(); Y.base = Y.dur; onEnded(); }
+        if (Y.mode === 'iframe' && Y.playing && Y.dur && fake.currentTime >= Y.dur - 0.3) { Y.halt(); Y.base = Y.dur; }
         if (State.currentTrack && State.currentTrack.source === 'youtube') {
           if (State.isPlaying !== Y.playing) { State.isPlaying = Y.playing; updatePlayIcons(); }
           document.documentElement.classList.toggle('bos-playing', !!Y.playing);   // art springs up while a YouTube song plays
@@ -9117,29 +8949,6 @@ html body:not(.bos-x) #full-player.fp-video-on .fp-art-wrap{width:min(calc(100vw
     });
     setInterval(stopIfOtherSong, 150);
 
-    // ---- video UI wiring ----
-    var seg = document.getElementById('fp-seg');
-    if (seg) seg.addEventListener('click', function(e){
-      var b = e.target.closest('[data-seg]'); if (!b) return;
-      e.stopPropagation(); Y.setVideo(b.dataset.seg === 'video');
-    });
-    var wrap = document.querySelector('#full-player .fp-art-wrap');
-    if (wrap) wrap.addEventListener('click', function(e){          // tap the video = play / pause
-      if (!Y.vid || Y.vframe || e.target.closest('#fp-vid-fs')) return;
-      Y.playing ? Y.halt() : Y.resume();
-    });
-    var fs = document.getElementById('fp-vid-fs');
-    if (fs) fs.addEventListener('click', function(e){
-      e.stopPropagation();
-      var v = Y.vd; if (!v || !wrap) return;
-      if (document.fullscreenElement || document.webkitFullscreenElement) { (document.exitFullscreen || document.webkitExitFullscreen).call(document); return; }
-      var rq = wrap.requestFullscreen || wrap.webkitRequestFullscreen;
-      if (rq) { try { var r = rq.call(wrap); if (r && r.catch) r.catch(function(){}); } catch (x) {} }
-      else if (v.webkitEnterFullscreen) { try { v.webkitEnterFullscreen(); } catch (x) {} }
-    });
-    // video costs data and battery: go back to the plain song when the player is minimised or the app goes to the background
-    document.addEventListener('visibilitychange', function(){ if (document.hidden && Y.vid) Y.setVideo(false); });
-    if (FP) new MutationObserver(function(){ if (Y.vid && !FP.classList.contains('open')) Y.setVideo(false); }).observe(FP, { attributes: true, attributeFilter: ['class'] });
     return Y;
   })();
 
@@ -9249,9 +9058,7 @@ html body:not(.bos-x) #full-player.fp-video-on .fp-art-wrap{width:min(calc(100vw
       YTV.playing ? YTV.halt() : YTV.resume();
     },
     pause: function(){ if (YTV.on) YTV.halt(); },
-    resume: function(){ var S = window.BosApp.State; if (!YTV.on) { if (isYt(S.currentTrack)) playTrack(S.currentTrack, null, null, {}); return; } YTV.resume(); },
-    setVideo: function(on){ return YTV.setVideo(on); },
-    isVideo: function(){ return !!YTV.vid; }
+    resume: function(){ var S = window.BosApp.State; if (!YTV.on) { if (isYt(S.currentTrack)) playTrack(S.currentTrack, null, null, {}); return; } YTV.resume(); }
   };
 
   function openYT(){ ov.classList.add('on'); q.focus(); if (window.BosMotion && window.BosMotion.layout) setTimeout(function(){ try { window.BosMotion.layout(false); } catch (e) {} }, 0); }
