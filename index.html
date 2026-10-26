@@ -1452,7 +1452,7 @@ const SmartRadio=(()=>{
 const Player={
   _playToken:0,_nextInFlight:false,
   async play(track,contextList,index,opts){
-    opts=opts||{};if(!track)return false;if(track.source==="youtube"){if(window.BosYT&&window.BosYT.playTrack){State.smartRadioRefillToken++;this._playToken++;this._nextInFlight=false;return window.BosYT.playTrack(track,contextList,index,opts);}if(!opts.autoTransition)toast("BOOSTER + is still loading, try again.","error");return false;}if(contextList)contextList=contextList.filter(t=>t&&t.source!=="youtube");const isAuto=opts.autoTransition===true;
+    opts=opts||{};if(!track)return false;if(track.source==="youtube"){if(window.BosYT&&window.BosYT.playTrack){State.smartRadioRefillToken++;this._playToken++;this._nextInFlight=false;return window.BosYT.playTrack(track,contextList,index,opts);}if(!opts.autoTransition)toast("BOOSTER + is still loading, try again.","error");return false;}if(contextList)contextList=contextList.filter(t=>t&&t.source!=="youtube");try{if(window.__bosYT&&window.__bosYT.on&&window.__bosYT.off)window.__bosYT.off();}catch(_){}const isAuto=opts.autoTransition===true;
     if(!isAuto){State.smartRadioRefillToken++;finalizeCrossfadeIfRunning();this._nextInFlight=false;}else if(!State.settings.autoplayNext||State.repeat==="one")return false;
     const myToken=++this._playToken;
     if(contextList){Queue.setQueue(SmartRadio.prepareInitialQueue(track,contextList),0);State.smartRadioActive=false;}else if(isAuto)State.smartRadioActive=true;
@@ -1591,7 +1591,9 @@ function bindAudioEvents(el){
   });
   el.addEventListener("error",()=>{
     if(el!==primaryAudio())return;
+    if(!el.getAttribute("src")||(el.error&&el.error.code===1))return; // empty/aborted load is not a real failure
     const id=State.currentTrack&&State.currentTrack.id;
+    if(el.dataset.boosterTrackId&&id&&String(el.dataset.boosterTrackId)!==String(id))return; // stale element
     if(id) failedTrackIds.add(String(id));
     consecutivePlaybackErrors++;
     if(consecutivePlaybackErrors>=5){
@@ -3018,7 +3020,8 @@ document.addEventListener("click", async function(e){
 
   if(action==="play-song"){
     let t = findTrackById(el.dataset.id); if(!t) return;
-    t = await resolvePlayableTrack(t); if(!t) return;
+    const _clk=(window.__playClk=(window.__playClk||0)+1);
+    t = await resolvePlayableTrack(t); if(!t||_clk!==window.__playClk) return;
     const ctxKey = el.dataset.ctx;
     const ctxList = ctxKey ? ctxStore.get(ctxKey) : null;
     const idx = ctxList ? ctxList.findIndex(x=>x.id===t.id) : 0;
@@ -3531,15 +3534,19 @@ function init(){
     const preferred=bestAudioUrl(track);
     if(preferred) urls.push(preferred);
     Object.values(track && track.downloadUrl || {}).forEach(u=>{ if(u && !urls.includes(u)) urls.push(u); });
+    const tk=Player._playToken, g=(el._lg=(el._lg||0)+1);
+    const stale=()=>g!==el._lg||tk!==Player._playToken;
+    try{el.pause();}catch(_){}
+    try{el.dataset.boosterTrackId=String(track&&track.id||"");}catch(_){}
     let lastErr=null;
     for(const url of urls.slice(0,4)){
+      if(stale()) throw lastErr||new DOMException("superseded","AbortError");
       try{
-        el.pause();
-        if(el.src !== url){ el.src=url; try{el.load();}catch(_){} }
+        el.src=url; try{el.load();}catch(_){}
         if(Number.isFinite(startAt)&&startAt>0){ try{el.currentTime=startAt;}catch(_){} }
         await el.play();
         return true;
-      }catch(err){ lastErr=err; try{el.removeAttribute("src");el.load();}catch(_){} }
+      }catch(err){ lastErr=err; if(stale()) throw err; }
     }
     throw lastErr || new Error("no-src");
   };
@@ -5527,7 +5534,7 @@ document.getElementById('view-toplists').addEventListener('click',onClick);
 setInterval(function(){if(State.view==='charts'&&CH.list&&!CH.busy&&Date.now()-CH.at>300000)window.renderCharts(true);if(State.view==='toplists'&&TL.html&&!TL.busy&&Date.now()-TL.at>300000)window.renderToplists(true)},60000);
 })();
 window.BOS_PLAY=function(list,i){return Player.play(list[i],list,i,{autoTransition:false});};window.BOS_TOAST=function(m,t){try{toast(m,t);}catch(e){}};
-try{window.BosApp={State:State,renderMiniPlayer:renderMiniPlayer,renderFullPlayer:renderFullPlayer,renderQueuePanel:renderQueuePanel,SystemMedia:SystemMedia,updateAmbient:updateAmbient,loadLyricsFor:loadLyricsFor,updatePlayIcons:updatePlayIcons,paintProgress:paintProgress,fmtTime:fmtTime,Queue:Queue,History:History,Store:Store,toast:toast,Player:Player};}catch(e){console.warn('BosApp export',e);}
+try{window.BosApp={State:State,renderMiniPlayer:renderMiniPlayer,renderFullPlayer:renderFullPlayer,renderQueuePanel:renderQueuePanel,SystemMedia:SystemMedia,updateAmbient:updateAmbient,loadLyricsFor:loadLyricsFor,updatePlayIcons:updatePlayIcons,paintProgress:paintProgress,fmtTime:fmtTime,Queue:Queue,History:History,Store:Store,toast:toast,Player:Player,haltJio:function(){try{finalizeCrossfadeIfRunning();}catch(_){}try{State._autoTransitionInFlight=false;State._crossfadeTriggered=false;Player._nextInFlight=false;Player._playToken++;}catch(_){}}};}catch(e){console.warn('BosApp export',e);}
 })();
 </script>
 
@@ -6318,7 +6325,7 @@ window.BoosterDiagnostics = {
   window.BoosterFX={reverbSwitch:reverbSwitch,attach:attachExtra,setReverb:function(v){revOn=!!v;try{localStorage.setItem('boosterReverb',v?'1':'0');}catch(_){}}};
   const _play=Player.play;
   Player.play=async function(t,c,i,o){
-    if(!(o&&o.autoTransition)){const w=reverbSwitch(); if(w)await new Promise(r=>setTimeout(r,w));}
+    if(!(o&&o.autoTransition)){const w=reverbSwitch(); if(w)await new Promise(r=>setTimeout(r,Math.min(w,20)));}
     return _play.apply(this,arguments);
   };
   (function reverbUI(){
@@ -8783,7 +8790,7 @@ window.__bosLyricFix={fixLine:fixLine,demoji:demoji};
       play:function(){ Y.resume(); return Promise.resolve(); }, pause:function(){ Y.halt(); },
       load:function(){}, addEventListener:function(){}, removeEventListener:function(){}
     };
-    window.__bosYT = { get on(){ return Y.on; }, fake: fake };
+    window.__bosYT = { get on(){ return Y.on; }, fake: fake, off: function(){ Y.off(); } };
 
     // ---------- real audio element ----------
     function onEnded(){
@@ -8831,7 +8838,7 @@ window.__bosLyricFix={fixLine:fixLine,demoji:demoji};
         if (tok !== Y.tok) return;
         if (e && e.name === 'NotAllowedError') { Y.playing = false; icons(); }   // browser wants a tap: play button works
       });
-      Y.wd = setTimeout(function(){ if (tok === Y.tok && Y.playing && a.readyState < 3) Y.fail(tok); }, 6000);
+      Y.wd = setTimeout(function(){ if (tok === Y.tok && Y.playing && a.readyState < 3) Y.fail(tok); }, 4500);
     };
     Y.fail = function(tok){
       if (tok !== Y.tok || !Y.on || Y.mode !== 'audio') return;
@@ -8953,27 +8960,60 @@ window.__bosLyricFix={fixLine:fixLine,demoji:demoji};
   })();
 
   // ---- YouTube queue: its own list of YouTube songs, filled with related songs ----
-  var refilling = false;
+  var refilling = false, recentIds = [], artistHist = [];
+  var BAD_RE = /\b(reaction|reacts?|trailer|teaser|interview|full album|jukebox|mashup|nonstop|non-stop|\d+\s*hours?|podcast|review|making of|behind the scenes|shorts?|tutorial|karaoke|status|ringtone|bgm)\b/i;
+  var VARIANT_RE = /\b(slowed|reverb|lofi|lo-fi|remix|sped up|8d|bass boosted|cover|nightcore)\b/i;
+  function noteTrack(t){
+    if (!t) return; var id = t.id;
+    recentIds = recentIds.filter(function(x){ return x !== id; }); recentIds.unshift(id); recentIds.length = Math.min(recentIds.length, 60);
+    var a = String(t.artistName || '').toLowerCase(); if (a) { artistHist.unshift(a); artistHist.length = Math.min(artistHist.length, 30); }
+  }
+  function scoreVid(v, cur, wantVariant){
+    var title = String(v.title || ''), au = cleanAuthor(v.author).toLowerCase(), ca = String(cur.artistName || '').toLowerCase();
+    var len = +v.lengthSeconds || 0, cl = +cur.duration || 0, sc = 0;
+    if (au && ca && (au === ca || au.indexOf(ca) >= 0 || ca.indexOf(au) >= 0)) sc += 3;
+    var seen = artistHist.filter(function(x){ return x === au; }).length;
+    if (artistHist.indexOf(au) >= 0) sc += Math.min(seen, 3) * 0.8;      // artists you keep playing
+    if (cl && len) { var d = Math.abs(len - cl); sc += d < 60 ? 1.5 : d < 150 ? 0.7 : 0; }
+    if (/\b(official|audio|lyrical|lyrics|video)\b/i.test(title)) sc += 0.8;
+    if (/topic/i.test(String(v.author || ''))) sc += 1;
+    if (!wantVariant && VARIANT_RE.test(title)) sc -= 3;
+    if (+v.viewCount > 1e6) sc += 0.5;
+    sc -= Math.random() * 0.6;                                          // small shuffle so radio is not identical every time
+    return sc;
+  }
   async function refillRelated(force){
     var S = window.BosApp.State, Q = window.BosApp.Queue;
     if (refilling || !isYt(S.currentTrack)) return false;
     var ahead = S.queue.length - (S.queueIndex + 1);
-    if (!force && ahead >= 5) return false;
+    if (!force && ahead >= 6) return false;
     refilling = true; var cur = S.currentTrack, added = false;
     try {
-      var vids = [];
-      try { vids = await related(vidOf(cur)); } catch (e) {}
-      if (vids.length < 4) { try { vids = vids.concat(await searchAll(((cur.artistName || '') + ' songs').trim())); } catch (e) {} }
+      noteTrack(cur);
+      var vids = [], prev = S.queue[S.queueIndex - 1];
+      var jobs = [related(vidOf(cur)).catch(function(){ return []; })];
+      if (isYt(prev) && vidOf(prev) !== vidOf(cur)) jobs.push(related(vidOf(prev)).catch(function(){ return []; }));
+      var res = await Promise.all(jobs);
+      vids = res[0].concat((res[1] || []).slice(0, 8));
+      if (vids.length < 8 && cur.artistName) { try { vids = vids.concat(await searchAll((cur.artistName + ' songs').trim())); } catch (e) {} }
       var S2 = window.BosApp.State;
-      if (!isYt(S2.currentTrack)) return false;               // user moved to a BOOSTER song: never mix the lists
+      if (!isYt(S2.currentTrack) || S2.currentTrack.id !== cur.id) return false;   // user moved on: never mix lists
       var have = {}, fams = {}, per = {}, out = [];
       S2.queue.forEach(function(t){ if (t) { have[t.id] = 1; fams[famOf(t.name)] = 1; } });
-      for (var k = 0; k < vids.length && out.length < 14; k++) {
-        var v = vids[k]; if (!v || !v.videoId) continue;
-        var len = +v.lengthSeconds || 0; if (len && (len < 60 || len > 720)) continue;
-        var id = 'yt_' + v.videoId; if (have[id]) continue;
+      recentIds.forEach(function(id){ have[id] = 1; });
+      var wantVariant = VARIANT_RE.test(String(cur.name || ''));
+      var cands = [], seenV = {};
+      vids.forEach(function(v){
+        if (!v || !v.videoId || seenV[v.videoId]) return; seenV[v.videoId] = 1;
+        var len = +v.lengthSeconds || 0; if (len && (len < 75 || len > 540)) return;
+        if (BAD_RE.test(String(v.title || ''))) return;
+        cands.push({ v: v, s: scoreVid(v, cur, wantVariant) });
+      });
+      cands.sort(function(a, b){ return b.s - a.s; });
+      for (var k = 0; k < cands.length && out.length < 12; k++) {
+        var v = cands[k].v, id = 'yt_' + v.videoId; if (have[id]) continue;
         var f = famOf(v.title); if (fams[f]) continue;
-        var au = v.author || ''; per[au] = (per[au] || 0) + 1; if (per[au] > 3) continue;
+        var au = v.author || ''; per[au] = (per[au] || 0) + 1; if (per[au] > 2) continue;
         have[id] = 1; fams[f] = 1; out.push(mkTrack(v));
       }
       if (out.length) {
@@ -8984,6 +9024,16 @@ window.__bosLyricFix={fixLine:fixLine,demoji:demoji};
       }
     } finally { refilling = false; }
     return added;
+  }
+  // Rebuild everything after the current song as a fresh "radio" from it
+  async function radio(){
+    var App = window.BosApp, S = App.State, Q = App.Queue;
+    if (!isYt(S.currentTrack)) return false;
+    S.queue.splice(S.queueIndex + 1); if (S.shuffle) { try { Q.buildShuffleOrder(); } catch (e) {} }
+    Q.persist(); refilling = false;
+    var ok = await refillRelated(true);
+    try { App.toast(ok ? 'YouTube radio ready' : 'Could not load suggestions', ok ? 'success' : 'error'); } catch (e) {}
+    return ok;
   }
 
   async function playTrack(track, ctx, idx, opts){
@@ -9003,7 +9053,7 @@ window.__bosLyricFix={fixLine:fixLine,demoji:demoji};
       if (qi >= 0) { S.queueIndex = qi; Q.persist(); } else Q.setQueue([track], 0);
     }
     S.smartRadioActive = false;
-    session++; pauseApp();
+    session++; try { window.BosApp.haltJio(); } catch (e) {} pauseApp();
     YTV.begin(track);
     YTV.start(id, 0);
     setTimeout(function(){ refillRelated(false); }, 300);
@@ -9057,6 +9107,7 @@ window.__bosLyricFix={fixLine:fixLine,demoji:demoji};
       if (!YTV.on) { if (isYt(S.currentTrack)) playTrack(S.currentTrack, null, null, {}); return; }
       YTV.playing ? YTV.halt() : YTV.resume();
     },
+    radio: radio,
     pause: function(){ if (YTV.on) YTV.halt(); },
     resume: function(){ var S = window.BosApp.State; if (!YTV.on) { if (isYt(S.currentTrack)) playTrack(S.currentTrack, null, null, {}); return; } YTV.resume(); }
   };
