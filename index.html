@@ -2400,6 +2400,39 @@ async function fetchLyricsSmart(track,signal){
   }
   return null;
 }
+/* BOOSTER + : find a MY_LYRICS entry for any track (YouTube titles are matched on every cleaned candidate, fuzzy) */
+function bosFindMyLyrics(track, lt){
+  const list = window.MY_LYRICS||[]; if(!list.length) return null;
+  const cands = (track && track.source==="youtube") ? ytLyricTracks(track) : [];
+  if(lt) cands.unshift(lt);
+  if(track) cands.push(track);
+  const rawTitle = lyricsNorm(lyStrip(String((track&&(track.name||track.title))||"")));
+  const artOK = (e,c)=>{
+    if(!e.artist) return true;
+    const ea = lyricsNorm(e.artist);
+    return [c.artistName,c.artist,track&&track.artistName,track&&track.artist].some(a=>lyricsNorm(String(a||"")).includes(ea)) || rawTitle.includes(ea);
+  };
+  /* pass 1: exact title match */
+  for(const c of cands){
+    const tn = lyricsNorm(lyStrip(c.name||c.title||"")); if(!tn) continue;
+    const e = list.find(e=>lyricsNorm(lyStrip(e.title||""))===tn && artOK(e,c));
+    if(e) return e;
+  }
+  /* pass 2: fuzzy (YouTube only): same words / title contained in the video title */
+  if(track && track.source==="youtube"){
+    let best=null, bs=0;
+    for(const e of list){
+      const et = lyricsNorm(lyStrip(e.title||"")); if(!et || et.length<3) continue;
+      if(!artOK(e,cands[0]||{})) continue;
+      let s = 0;
+      for(const c of cands){ s = Math.max(s, lyricsSimilarity(lyStrip(c.name||""), e.title)); }
+      if((" "+rawTitle+" ").includes(" "+et+" ")) s = Math.max(s, .9);
+      if(s>bs){ bs=s; best=e; }
+    }
+    if(best && bs>=.8) return best;
+  }
+  return null;
+}
 async function loadLyricsFor(track){
   const lt = track.source==="youtube" ? (ytLyricTracks(track)[0]||track) : track;   // clean title/artist for YouTube songs
   const key = lyricsCacheKey(lt);
@@ -2418,15 +2451,9 @@ async function loadLyricsFor(track){
     State.lyricsData = {status:"ok", synced:data.synced?data.lines:null, plain:data.synced?"":data.lines.map(l=>l.text).join("\n"), estimated:false, source:data.source||""};
     renderLyricsPane(); updateActiveLyric(primaryAudio().currentTime||0, true);
   };
-  /* MY_LYRICS (lyrics.js): your own lyrics win over cache + every API */
+  /* MY_LYRICS (lyrics.js): your own lyrics win over cache + every API. Works for BOOSTER and BOOSTER + (YouTube) songs */
   try{
-    const mine = (window.MY_LYRICS||[]).find(e=>{
-      const tn = lyricsNorm(lyStrip(lt.name||lt.title||""));
-      if(lyricsNorm(lyStrip(e.title||""))!==tn) return false;
-      if(!e.artist) return true;
-      const an = lyricsNorm(String(lt.artistName||lt.artist||""));
-      return an.includes(lyricsNorm(e.artist));
-    });
+    const mine = bosFindMyLyrics(track, lt);
     if(mine && mine.lrc){
       const ml = parseLRC(mine.lrc);
       const md = ml.length>=2 ? {synced:true,estimated:false,source:"MY LYRICS",lines:ml}
